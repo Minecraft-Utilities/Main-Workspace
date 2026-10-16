@@ -36,8 +36,8 @@ public final class JavaMinecraftServerPinger implements MinecraftServerPinger<Ja
     /**
      * Performs the Java status protocol handshake and returns the raw status token, skipping the
      * expensive domain-object materialization ({@link JavaMinecraftServer#create} decodes the
-     * favicon, colorizes sample names, and serializes MOTD components). The server tracker uses
-     * this token path at scan scale; {@link #ping} delegates to it so behavior is unchanged.
+     * favicon, colorizes sample names, and serializes MOTD components). {@link #ping} delegates
+     * to it so behavior is unchanged.
      *
      * @param hostname the hostname of the server
      * @param ip       the resolved ip of the server, may be null to resolve the hostname
