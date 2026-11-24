@@ -25,3 +25,7 @@ The SQL scripts replay the hourly rebuilds against a clone (`mcutils_bench`) of 
 - `skins-job.sql -v window='<interval>'` runs `SkinTrendingRepository.rebuild`; `skins-job-old.sql` is the
   pre-`skin_trending` query for comparison on the original seed. The seed puts 15M adoptions in the last 7
   days, ~5000x prod, so size the window to a row count instead (prod: ~3.2k adoptions per 7 days).
+- `index-experiment.sh <label> <rows> [index ...]` drops the named indexes inside a transaction, inserts `<rows>`
+  new skin adoptions (each fires the `unique_owners` trigger) and rolls back, reporting time and WAL. Set
+  `SETUP="SET LOCAL wal_compression = zstd;"` to test compression. The first run on a freshly migrated clone pays
+  extra hint-bit full-page images; discard it. Time is I/O noise, WAL is stable.
