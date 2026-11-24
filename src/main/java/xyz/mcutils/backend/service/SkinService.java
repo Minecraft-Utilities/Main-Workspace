@@ -311,43 +311,20 @@ public class SkinService {
             throw new BadRequestException("Invalid or unsupported skin part: '%s'".formatted(typeName));
         }
 
-        String canonicalKeyBase = "%s-%s-%s".formatted(skin.getTextureId(), part.name(), options.renderOverlays());
-        String canonicalKey = options.cape() != null ? canonicalKeyBase + "-" + options.cape().getTextureId() : canonicalKeyBase;
-        String sizeKey = canonicalKey + "-" + size;
-        byte[] sizeBytes = cacheEnabled ? this.renderedSkinCache.getIfPresent(sizeKey) : null;
-        if (sizeBytes != null) {
+        String baseKey = "%s-%s-%s".formatted(skin.getTextureId(), part.name(), options.renderOverlays());
+        String sizeKey = options.cape() != null ? baseKey + "-" + options.cape().getTextureId() + "-" + size : baseKey + "-" + size;
+        byte[] cached = cacheEnabled ? this.renderedSkinCache.getIfPresent(sizeKey) : null;
+        if (cached != null) {
             MetricService.getMetric(SkinRenderMetric.class).recordHit();
-            return sizeBytes;
+            return cached;
         }
 
-        byte[] canonicalBytes = cacheEnabled ? this.renderedSkinCache.getIfPresent(canonicalKey) : null;
-        BufferedImage renderedImage = null;
-        if (canonicalBytes == null) {
-            log.debug("Rendering skin part {} for skin {}", part.name(), skin.getTextureId());
-            long renderStart = System.currentTimeMillis();
-            BufferedImage img = skin.render(part, maxPartSize, options);
-            renderedImage = img;
-            byte[] bytes = ImageUtils.imageToBytes(img, 1);
-            if (cacheEnabled) {
-                this.renderedSkinCache.put(canonicalKey, bytes);
-            }
-            long elapsed = System.currentTimeMillis() - renderStart;
-            log.debug("Rendered skin part {} for skin {} in {}ms", part.name(), skin.getTextureId(), elapsed);
-            MetricService.getMetric(SkinRenderMetric.class).recordMiss(elapsed);
-            canonicalBytes = bytes;
-        } else {
-            MetricService.getMetric(SkinRenderMetric.class).recordHit();
-        }
-
-        if (size == maxPartSize) {
-            return canonicalBytes;
-        }
-
-        BufferedImage image = renderedImage != null ? renderedImage : ImageUtils.decodeImage(canonicalBytes);
-        sizeBytes = ImageUtils.imageToBytes(ImageUtils.resizeToHeight(image, size), 1);
+        long renderStart = System.currentTimeMillis();
+        byte[] bytes = ImageUtils.imageToBytes(skin.render(part, size, options), 1);
         if (cacheEnabled) {
-            this.renderedSkinCache.put(sizeKey, sizeBytes);
+            this.renderedSkinCache.put(sizeKey, bytes);
         }
-        return sizeBytes;
+        MetricService.getMetric(SkinRenderMetric.class).recordMiss(System.currentTimeMillis() - renderStart);
+        return bytes;
     }
 }

@@ -25,7 +25,6 @@ import xyz.mcutils.backend.model.token.mojang.CapeTextureToken;
 import xyz.mcutils.backend.repository.postgres.CapeRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRepository;
 
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
@@ -35,7 +34,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -51,10 +49,7 @@ public class CapeService {
     private final WebRequest webRequest;
     private final CoalescingLoader<String, byte[]> textureLoader = new CoalescingLoader<>(Main.EXECUTOR);
     private final CoalescingLoader<String, CapeRow> capeCreationLoader = new CoalescingLoader<>(Runnable::run);
-    /**
-     * Local cache for downscaled (non-max) cape renders; the canonical max-size PNG lives in S3.
-     */
-    private final com.google.common.cache.Cache<String, byte[]> downscaledRenderCache = com.google.common.cache.CacheBuilder.newBuilder()
+    private final com.google.common.cache.Cache<String, byte[]> renderedCapeCache = com.google.common.cache.CacheBuilder.newBuilder()
             .expireAfterAccess(6, java.util.concurrent.TimeUnit.HOURS)
             .maximumWeight(128L * 1024 * 1024)
             .weigher((String key, byte[] value) -> value.length)
@@ -212,7 +207,6 @@ public class CapeService {
 
     /**
      * Renders a cape part at the given size.
-     * Canonical image is stored at max size; smaller requested sizes are produced by downscaling.
      *
      * @param cape     the cape to render
      * @param typeName the cape part type (e.g. FRONT)
@@ -233,46 +227,19 @@ public class CapeService {
             throw new BadRequestException("Invalid or unsupported cape part: '%s'".formatted(typeName));
         }
 
-        String canonicalKey = "%s-%s-%s.png".formatted(cape.getClass().getName(), cape.getTextureId(), part.name());
-        log.debug("Getting cape part for cape: {} (part {}, size {})", cape.getTextureId(), typeName, size);
-
-        StorageService.Bucket bucket = StorageService.Bucket.RENDERED_VANILLA_CAPES;
-
-        long cacheStart = System.currentTimeMillis();
-        byte[] canonicalBytes = cacheEnabled ? this.storageService.get(bucket, canonicalKey) : null;
-        BufferedImage canonicalImage = null;
-
-        if (canonicalBytes == null) {
-            long renderStart = System.currentTimeMillis();
-            canonicalImage = ((Cape) cape).render(part, maxPartSize, RenderOptions.DEFAULT);
-            canonicalBytes = ImageUtils.imageToBytes(canonicalImage, 1);
-            log.debug("Took {}ms to render cape part for cape: {}", System.currentTimeMillis() - renderStart, cape.getTextureId());
-            MetricService.getMetric(CapeRenderMetric.class).recordMiss(System.currentTimeMillis() - renderStart);
-            if (cacheEnabled) {
-                final byte[] toUpload = canonicalBytes;
-                CompletableFuture.runAsync(() -> this.storageService.upload(bucket, canonicalKey, MediaType.IMAGE_PNG_VALUE, toUpload), Main.EXECUTOR).exceptionally(ex -> {
-                    log.warn("Save failed for cape part {}: {}", canonicalKey, ex.getMessage());
-                    return null;
-                });
-            }
-        } else {
-            log.debug("Got cape part for cape {} from cache in {}ms", cape.getTextureId(), System.currentTimeMillis() - cacheStart);
+        String sizeKey = "%s-%s-%s-%d".formatted(cape.getClass().getName(), cape.getTextureId(), part.name(), size);
+        byte[] cached = cacheEnabled ? this.renderedCapeCache.getIfPresent(sizeKey) : null;
+        if (cached != null) {
             MetricService.getMetric(CapeRenderMetric.class).recordHit();
+            return cached;
         }
 
-        if (size == maxPartSize) {
-            return canonicalBytes;
+        long renderStart = System.currentTimeMillis();
+        byte[] bytes = ImageUtils.imageToBytes(((Cape) cape).render(part, size, RenderOptions.DEFAULT), 1);
+        if (cacheEnabled) {
+            this.renderedCapeCache.put(sizeKey, bytes);
         }
-
-        String sizeKey = canonicalKey + "-" + size;
-        byte[] sizeBytes = this.downscaledRenderCache.getIfPresent(sizeKey);
-        if (sizeBytes != null) {
-            return sizeBytes;
-        }
-
-        BufferedImage image = canonicalImage != null ? canonicalImage : ImageUtils.decodeImage(canonicalBytes);
-        sizeBytes = ImageUtils.imageToBytes(ImageUtils.resizeToHeight(image, size), 1);
-        this.downscaledRenderCache.put(sizeKey, sizeBytes);
-        return sizeBytes;
+        MetricService.getMetric(CapeRenderMetric.class).recordMiss(System.currentTimeMillis() - renderStart);
+        return bytes;
     }
 }

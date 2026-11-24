@@ -123,8 +123,7 @@ public class StorageService {
     @Getter
     public enum Bucket {
         SKINS("mcutils-skins"),
-        VANILLA_CAPES("mcutils-vanilla-capes"),
-        RENDERED_VANILLA_CAPES("mcutils-rendered-vanilla-capes");
+        VANILLA_CAPES("mcutils-vanilla-capes");
 
         private final String name;
     }
