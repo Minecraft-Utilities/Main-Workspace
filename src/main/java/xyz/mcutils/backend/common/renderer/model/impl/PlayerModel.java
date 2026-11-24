@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class PlayerModel {
     private static final Map<FaceCacheKey, List<Face>> FACE_CACHE = new ConcurrentHashMap<>();
+    private static final List<Face> CAPE_FACES = createCapeFaces();
 
     /**
      * Builds all faces for the player model.
@@ -66,9 +67,13 @@ public class PlayerModel {
      * the +Z face.  For a cape, the outer-decorative surface must face -Z (toward the camera
      * in the back view), so we swap slots [0] and [1] before the call.</p>
      *
-     * @return an unmodifiable list of cape faces using cape-texture UV coordinates
+     * @return the shared, unmodifiable cape faces using cape-texture UV coordinates
      */
     public static List<Face> buildCapeFaces() {
+        return CAPE_FACES;
+    }
+
+    private static List<Face> createCapeFaces() {
         List<Face> faces = new ArrayList<>();
         double[][] raw = ModelUtils.uvFrom(CapeModelCoordinates.ModelBox.CAPE.getUv());
         // Swap [0] (outer-decorative) and [1] (inner-lining) so addBox places the

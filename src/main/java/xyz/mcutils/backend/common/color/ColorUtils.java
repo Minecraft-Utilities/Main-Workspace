@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 @UtilityClass
 public final class ColorUtils {
     private static final Pattern STRIP_COLOR_PATTERN = Pattern.compile("(?i)§[0-9A-FK-ORX]|§x(§[0-9A-F]){6}|§#[0-9A-Fa-f]{6}");
+    private static final Pattern HEX_COLOR_PATTERN = Pattern.compile("[0-9A-Fa-f]{6}");
 
     /**
      * Strip the color codes
@@ -219,7 +220,7 @@ public final class ColorUtils {
             return null;
         }
         String hex = line.substring(index + 2, index + 8);
-        if (!hex.matches("[0-9A-Fa-f]{6}")) {
+        if (!HEX_COLOR_PATTERN.matcher(hex).matches()) {
             return null;
         }
         try {

@@ -1,5 +1,7 @@
 package xyz.mcutils.backend.common.renderer.impl.server;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
 import xyz.mcutils.backend.Main;
 import xyz.mcutils.backend.common.Fonts;
@@ -20,6 +22,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class ServerPreviewRenderer extends Renderer<MinecraftServer> {
@@ -35,13 +38,20 @@ public class ServerPreviewRenderer extends Renderer<MinecraftServer> {
     private static final int STATUS_ICON_HEIGHT = 8 * SCALE;
     private static final int RIGHT_SPACING = 5 * SCALE;
 
+    private static final Cache<String, BufferedImage> FAVICON_CACHE = Caffeine.newBuilder()
+            .maximumSize(256)
+            .expireAfterAccess(10, TimeUnit.MINUTES)
+            .build();
+
     private static BufferedImage SERVER_BACKGROUND;
     private static BufferedImage PING_ICON;
+    private static BufferedImage PING_ICON_SCALED;
 
     static {
         try {
             SERVER_BACKGROUND = ImageIO.read(new ByteArrayInputStream(Objects.requireNonNull(Main.class.getResourceAsStream("/icons/server_background.png")).readAllBytes()));
             PING_ICON = ImageIO.read(new ByteArrayInputStream(Objects.requireNonNull(Main.class.getResourceAsStream("/icons/ping.png")).readAllBytes()));
+            PING_ICON_SCALED = ImageUtils.resize(PING_ICON, SCALE);
         } catch (Exception ex) {
             log.error("Failed to load server preview assets", ex);
         }
@@ -87,8 +97,7 @@ public class ServerPreviewRenderer extends Renderer<MinecraftServer> {
 
         // Status area: ping icon at right, status text (player count) to its left
         int statusIconX = ROW_WIDTH - STATUS_ICON_WIDTH - RIGHT_SPACING;
-        BufferedImage pingIcon = ImageUtils.resize(PING_ICON, SCALE);
-        graphics.drawImage(pingIcon, statusIconX, PADDING, STATUS_ICON_WIDTH, STATUS_ICON_HEIGHT, null);
+        graphics.drawImage(PING_ICON_SCALED, statusIconX, PADDING, STATUS_ICON_WIDTH, STATUS_ICON_HEIGHT, null);
 
         // Player count
         Players players = server.getPlayers();
@@ -191,6 +200,7 @@ public class ServerPreviewRenderer extends Renderer<MinecraftServer> {
         if (favicon == null) {
             favicon = ServerService.DEFAULT_SERVER_ICON;
         }
-        return ImageUtils.base64ToImage(favicon);
+        // Favicons repeat across every render of the same server; decoding is the expensive part.
+        return FAVICON_CACHE.get(favicon, ImageUtils::base64ToImage);
     }
 }
