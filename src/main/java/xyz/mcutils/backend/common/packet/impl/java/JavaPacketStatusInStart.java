@@ -20,6 +20,9 @@ import java.io.IOException;
 public final class JavaPacketStatusInStart extends MinecraftJavaPacket {
     private static final byte ID = 0x00; // The ID of the packet
 
+    // Status JSON carries a base64 favicon; vanilla servers stay well under this.
+    private static final int MAX_RESPONSE_BYTES = 1 << 20;
+
     /**
      * The response json from the server, null if none.
      */
@@ -50,8 +53,8 @@ public final class JavaPacketStatusInStart extends MinecraftJavaPacket {
         if (length == -1) { // The stream was prematurely ended
             throw new IOException("Server stream was prematurely ended");
         }
-        else if (length == 0) {
-            throw new IOException("Server returned unexpected value.");
+        else if (length <= 0 || length > MAX_RESPONSE_BYTES) {
+            throw new IOException("Server returned unexpected response length " + length);
         }
 
         byte[] data = new byte[length];
