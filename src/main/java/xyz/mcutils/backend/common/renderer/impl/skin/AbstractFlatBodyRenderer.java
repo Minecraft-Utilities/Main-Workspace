@@ -48,7 +48,7 @@ public abstract class AbstractFlatBodyRenderer extends SkinRenderer {
     @Override
     public BufferedImage render(Skin skin, int size, RenderOptions options) {
         byte[] skinBytes = SkinService.INSTANCE.getSkinTexture(skin.getTextureId(), skin.getRawTextureUrl(), true);
-        BufferedImage skinImage = ImageUtils.decodeTexture(skinBytes);
+        BufferedImage skinImage = ImageUtils.decodeImage(skinBytes);
         boolean slim = skin.getModel() == Skin.Model.SLIM;
         boolean overlays = options.renderOverlays();
 

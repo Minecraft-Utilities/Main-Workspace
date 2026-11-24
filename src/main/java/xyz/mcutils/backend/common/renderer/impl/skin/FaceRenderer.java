@@ -20,7 +20,7 @@ public class FaceRenderer extends SkinRenderer {
     @Override
     public BufferedImage render(Skin skin, int size, RenderOptions options) {
         byte[] skinBytes = SkinService.INSTANCE.getSkinTexture(skin.getTextureId(), skin.getRawTextureUrl(), true);
-        BufferedImage skinImage = ImageUtils.decodeTexture(skinBytes);
+        BufferedImage skinImage = ImageUtils.decodeImage(skinBytes);
         boolean overlays = options.renderOverlays();
 
         BufferedImage out = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);

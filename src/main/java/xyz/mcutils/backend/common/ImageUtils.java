@@ -1,8 +1,5 @@
 package xyz.mcutils.backend.common;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.pngencoder.PngEncoder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -75,24 +72,6 @@ public class ImageUtils {
         double scale = (double) targetHeight / h;
         return resize(image, scale);
     }
-
-    /**
-     * Decodes a texture and shares the result for as long as the same byte array instance is alive.
-     * Keys compare by identity (weak), so this relies on callers receiving the array held by the texture
-     * caches. Returned images are shared: callers must only read them.
-     */
-    public static BufferedImage decodeTexture(byte[] bytes) {
-        if (bytes == null) {
-            throw new IllegalStateException("Failed to decode image: no data");
-        }
-        return DECODED_TEXTURES.getUnchecked(bytes);
-    }
-
-    private static final LoadingCache<byte[], BufferedImage> DECODED_TEXTURES = CacheBuilder.newBuilder()
-            .weakKeys()
-            .softValues()
-            .maximumSize(2048)
-            .build(CacheLoader.from(ImageUtils::decodeImage));
 
     /**
      * Decodes raw image bytes (e.g. PNG) into a BufferedImage.

@@ -1,7 +1,5 @@
 package xyz.mcutils.backend.common.font;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.HashMap;
@@ -137,14 +135,6 @@ public class BitmapFont {
      * Draw a single glyph tinted by the given color (glyph alpha as mask, color for visible pixels).
      */
     private void drawGlyphTinted(Graphics2D g, Glyph glyph, int x, int y, Color color) {
-        g.drawImage(TINTED_GLYPHS.get(new TintKey(glyph, color.getRGB() & 0xFFFFFF), _ -> tint(glyph, color)), x, y, null);
-    }
-
-    private record TintKey(Glyph glyph, int rgb) {}
-
-    private static final Cache<TintKey, BufferedImage> TINTED_GLYPHS = Caffeine.newBuilder().maximumSize(8192).build();
-
-    private static BufferedImage tint(Glyph glyph, Color color) {
         BufferedImage src = glyph.texture();
         int srcX = glyph.srcX();
         int srcY = glyph.srcY();
@@ -167,6 +157,6 @@ public class BitmapFont {
                 tinted.setRGB(px, py, (a << 24) | (tr << 16) | (tg << 8) | tb);
             }
         }
-        return tinted;
+        g.drawImage(tinted, x, y, null);
     }
 }

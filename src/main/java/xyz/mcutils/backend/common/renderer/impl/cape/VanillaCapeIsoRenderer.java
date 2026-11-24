@@ -28,7 +28,7 @@ public class VanillaCapeIsoRenderer extends Renderer<VanillaCape> {
     @SneakyThrows
     public BufferedImage render(VanillaCape cape, int size, RenderOptions options) {
         byte[] capeBytes = CapeService.INSTANCE.getCapeTexture(cape);
-        BufferedImage capeImage = ImageUtils.decodeTexture(capeBytes);
+        BufferedImage capeImage = ImageUtils.decodeImage(capeBytes);
         List<Face> faces = PlayerModel.buildCapeFaces();
         ViewParams view = new ViewParams(EYE, TARGET, YAW_DEG, PITCH_DEG, ASPECT_RATIO);
         return Isometric3DRenderer.INSTANCE.render(capeImage, faces, view, size);
