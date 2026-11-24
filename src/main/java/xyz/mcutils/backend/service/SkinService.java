@@ -253,7 +253,8 @@ public class SkinService {
             if (skinBytes == null) {
                 log.debug("Downloading skin image for skin {}", textureId);
                 byte[] bytes = webRequest.request(textureUrl).asBytes();
-                if (bytes == null) {
+                boolean fallback = bytes == null;
+                if (fallback) {
                     bytes = webRequest.request("https://textures.minecraft.net/texture/%s".formatted(DEFAULT_SKIN)).asBytes();
                     log.info("Skin not found for the texture {}, using fallback skin", textureId);
                     if (bytes == null) {
@@ -262,8 +263,10 @@ public class SkinService {
                 }
                 log.debug("Downloaded skin image for skin {} in {}ms", textureId, System.currentTimeMillis() - start);
 
-                byte[] finalBytes = bytes;
-                Main.EXECUTOR.submit(() -> this.storageService.upload(StorageService.Bucket.SKINS, textureId + ".png", MediaType.IMAGE_PNG_VALUE, finalBytes));
+                if (!fallback) {
+                    byte[] finalBytes = bytes;
+                    Main.EXECUTOR.submit(() -> this.storageService.upload(StorageService.Bucket.SKINS, textureId + ".png", MediaType.IMAGE_PNG_VALUE, finalBytes));
+                }
                 skinBytes = bytes;
             }
             return skinBytes;
