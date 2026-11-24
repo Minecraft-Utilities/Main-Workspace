@@ -2,10 +2,12 @@ package xyz.mcutils.backend.service;
 
 import com.google.common.net.InetAddresses;
 import io.minio.Utils.InetAddressValidator;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import xyz.mcutils.backend.Main;
+import xyz.mcutils.backend.common.CoalescingLoader;
 import xyz.mcutils.backend.common.EnumUtils;
 import xyz.mcutils.backend.common.ImageUtils;
 import xyz.mcutils.backend.common.renderer.impl.server.ServerPreviewRenderer;
@@ -44,6 +46,8 @@ public class ServerService {
     private final ServerRegistryService serverRegistryService;
     private final MinecraftServerCacheRepository serverCacheRepository;
     private final ServerPreviewCacheRepository serverPreviewCacheRepository;
+    private final CoalescingLoader<String, CachedMinecraftServer> serverLoader = new CoalescingLoader<>(Main.EXECUTOR);
+    private final CoalescingLoader<String, byte[]> previewLoader = new CoalescingLoader<>(Main.EXECUTOR);
     @Value("${mc-utils.cache.servers.enabled}")
     private boolean cacheEnabled;
     @Value("${mc-utils.renderer.server-preview.cache}")
@@ -59,7 +63,8 @@ public class ServerService {
     @Value("${mc-utils.server-pinger.bedrock.timeout}")
     private int bedrockPingerTimeout;
     @Value("#{'${mc-utils.server-pinger.blacklisted-subnets}'.split(',')}")
-    private List<String> blacklistedSubnets;
+    private List<String> blacklistedSubnetCidrs;
+    private List<Subnet> blacklistedSubnets;
 
     public ServerService(MojangService mojangService, MaxMindService maxMindService, DNSService dnsService, ServerRegistryService serverRegistryService, MinecraftServerCacheRepository serverCacheRepository, ServerPreviewCacheRepository serverPreviewCacheRepository) {
         this.mojangService = mojangService;
@@ -68,6 +73,11 @@ public class ServerService {
         this.serverRegistryService = serverRegistryService;
         this.serverCacheRepository = serverCacheRepository;
         this.serverPreviewCacheRepository = serverPreviewCacheRepository;
+    }
+
+    @PostConstruct
+    void parseBlacklistedSubnets() {
+        this.blacklistedSubnets = parseSubnets(this.blacklistedSubnetCidrs);
     }
 
     /**
@@ -97,6 +107,10 @@ public class ServerService {
                 log.debug("Invalid port: {} for server {}", parts[1], hostname);
                 throw new BadRequestException("Invalid port: '%s'".formatted(parts[1]));
             }
+            if (port < 1 || port > 65535) {
+                log.debug("Invalid port: {} for server {}", port, hostname);
+                throw new BadRequestException("Invalid port: '%s'".formatted(port));
+            }
         }
         String key = "%s-%s-%s".formatted(platformName, hostname, port);
         log.debug("Getting server: {}:{}", hostname, port);
@@ -113,6 +127,13 @@ public class ServerService {
             }
         }
 
+        String resolvedHostname = hostname;
+        int resolvedPort = port;
+        // A popular server can miss the cache in bursts, so one ping serves every caller waiting on this key.
+        return serverLoader.get(key, () -> this.loadServer(key, platform, resolvedHostname, resolvedPort));
+    }
+
+    private CachedMinecraftServer loadServer(String key, Platform platform, String hostname, int port) {
         List<DNSRecord> dnsRecords = new ArrayList<>();
 
         SRVRecord srvRecord = platform == Platform.JAVA ? dnsService.resolveSRV(hostname) : null; // Resolve the SRV record
@@ -209,26 +230,30 @@ public class ServerService {
         String key = "%s-%s-%s-%s".formatted(platform, server.getHostname(), server.getPort(), size);
 
         long cacheStart = System.currentTimeMillis();
-        Optional<CachedServerPreview> cached = serverPreviewCacheRepository.findById(key);
-        if (cached.isPresent() && previewCacheEnabled) {
-            log.debug("Got server preview {}:{} from cache in {}ms", server.getHostname(), server.getPort(), System.currentTimeMillis() - cacheStart);
-            return cached.get().getBytes();
-        }
-
-        long renderStart = System.currentTimeMillis();
-        byte[] preview = ImageUtils.imageToBytes(ServerPreviewRenderer.INSTANCE.render(server, size));
-        log.debug("Took {}ms to render preview for server: {}:{}", System.currentTimeMillis() - renderStart, server.getHostname(), server.getPort());
-
-        CachedServerPreview serverPreview = new CachedServerPreview(key, preview);
-
-        // don't save to cache in development
         if (previewCacheEnabled) {
-            CompletableFuture.runAsync(() -> serverPreviewCacheRepository.save(serverPreview), Main.EXECUTOR).exceptionally(ex -> {
-                log.warn("Save failed for server preview {}: {}", key, ex.getMessage());
-                return null;
-            });
+            Optional<CachedServerPreview> cached = serverPreviewCacheRepository.findById(key);
+            if (cached.isPresent()) {
+                log.debug("Got server preview {}:{} from cache in {}ms", server.getHostname(), server.getPort(), System.currentTimeMillis() - cacheStart);
+                return cached.get().getBytes();
+            }
         }
-        return preview;
+
+        // Rendering is CPU-bound, so a burst of requests for one preview must share a single render.
+        return previewLoader.get(key, () -> {
+            long renderStart = System.currentTimeMillis();
+            byte[] preview = ImageUtils.imageToBytes(ServerPreviewRenderer.INSTANCE.render(server, size));
+            log.debug("Took {}ms to render preview for server: {}:{}", System.currentTimeMillis() - renderStart, server.getHostname(), server.getPort());
+
+            // don't save to cache in development
+            if (previewCacheEnabled) {
+                CachedServerPreview serverPreview = new CachedServerPreview(key, preview);
+                CompletableFuture.runAsync(() -> serverPreviewCacheRepository.save(serverPreview), Main.EXECUTOR).exceptionally(ex -> {
+                    log.warn("Save failed for server preview {}: {}", key, ex.getMessage());
+                    return null;
+                });
+            }
+            return preview;
+        });
     }
 
     /**
@@ -244,46 +269,74 @@ public class ServerService {
             throw new BadRequestException("Invalid IP address");
         }
 
-        for (String cidr : this.blacklistedSubnets) {
-            if (isInSubnet(address, cidr.strip())) {
+        for (Subnet subnet : this.blacklistedSubnets) {
+            if (isInSubnet(address, subnet)) {
                 throw new BadRequestException("IP address is in a blacklisted subnet");
             }
         }
+    }
+
+    static List<Subnet> parseSubnets(List<String> cidrs) {
+        List<Subnet> subnets = new ArrayList<>(cidrs.size());
+        for (String cidr : cidrs) {
+            String trimmed = cidr.strip();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            int slash = trimmed.indexOf('/');
+            if (slash < 1) {
+                throw new IllegalStateException("Invalid blacklisted subnet: '%s'".formatted(trimmed));
+            }
+            byte[] network;
+            try {
+                network = InetAddresses.forString(trimmed.substring(0, slash)).getAddress();
+            } catch (IllegalArgumentException e) {
+                throw new IllegalStateException("Invalid blacklisted subnet: '%s'".formatted(trimmed), e);
+            }
+            int prefixLength;
+            try {
+                prefixLength = Integer.parseInt(trimmed.substring(slash + 1));
+            } catch (NumberFormatException e) {
+                throw new IllegalStateException("Invalid blacklisted subnet: '%s'".formatted(trimmed), e);
+            }
+            if (prefixLength < 0 || prefixLength > network.length * 8) {
+                throw new IllegalStateException("Invalid blacklisted subnet prefix: '%s'".formatted(trimmed));
+            }
+            subnets.add(new Subnet(network, prefixLength));
+        }
+        return List.copyOf(subnets);
     }
 
     /**
      * Checks if the given address is inside the subnet.
      *
      * @param address the address to check
-     * @param cidr    the subnet to check
+     * @param subnet  the pre-parsed subnet to check
      * @return if the given address is inside the subnet
      */
-    private boolean isInSubnet(InetAddress address, String cidr) {
-        String[] parts = cidr.split("/");
-        InetAddress subnet = InetAddresses.forString(parts[0]);
-        int prefixLength = Integer.parseInt(parts[1]);
-
-        if (address.getClass() != subnet.getClass()) {
+    static boolean isInSubnet(InetAddress address, Subnet subnet) {
+        byte[] addressBytes = address.getAddress();
+        byte[] subnetBytes = subnet.network();
+        if (addressBytes.length != subnetBytes.length) {
             return false;
         }
 
-        byte[] addressBytes = address.getAddress();
-        byte[] subnetBytes = subnet.getAddress();
-
+        int prefixLength = subnet.prefixLength();
         int fullBytes = prefixLength / 8;
-        int remainingBits = prefixLength % 8;
-
         for (int i = 0; i < fullBytes; i++) {
             if (addressBytes[i] != subnetBytes[i]) {
                 return false;
             }
         }
 
-        if (remainingBits > 0) {
-            int mask = 0xFF00 >> remainingBits;
-            return (addressBytes[fullBytes] & mask) == (subnetBytes[fullBytes] & mask);
+        int remainingBits = prefixLength % 8;
+        if (remainingBits == 0) {
+            return true;
         }
+        int mask = 0xFF00 >> remainingBits;
+        return (addressBytes[fullBytes] & mask) == (subnetBytes[fullBytes] & mask);
+    }
 
-        return true;
+    record Subnet(byte[] network, int prefixLength) {
     }
 }
