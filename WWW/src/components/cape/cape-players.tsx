@@ -1,5 +1,5 @@
 import { formatNumberWithCommas } from "@/common/utils";
-import { Cape } from "mcutils-js-api/dist/types/player/cape/cape";
+import type { Cape } from "mcutils-js-api";
 import OwnerCount from "../owner-count";
 import PlayerPreview from "../player/player-preview";
 import SimpleLink from "../simple-link";
@@ -10,13 +10,17 @@ interface CapePlayersProps {
 }
 
 export default function CapePlayers({ cape }: CapePlayersProps) {
+  const accounts = cape.accountsSeenOwning ?? [];
+  const currentOwners = cape.currentOwners ?? 0;
+  const remainingOwners = currentOwners - accounts.length;
+
   return (
     <Card className="h-105 w-full text-sm">
       <CardHeader>
-        <OwnerCount count={cape.uniqueOwners} name="Owners" />
+        <OwnerCount count={currentOwners} name="Owners" />
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2 overflow-y-auto">
-        {cape.accountsSeenOwning?.map((account, index, accounts) => (
+        {accounts.map((account, index) => (
           <div key={account} className="flex items-center">
             <PlayerPreview
               nameOrUuid={account}
@@ -29,10 +33,8 @@ export default function CapePlayers({ cape }: CapePlayersProps) {
             {index !== accounts.length - 1 && <p className="text-muted-foreground">,</p>}
           </div>
         ))}
-        {cape.accountsSeenOwning && cape.accountsSeenOwning.length < cape.uniqueOwners && (
-          <p className="text-muted-foreground">
-            + {formatNumberWithCommas(cape.uniqueOwners - cape.accountsSeenOwning.length)} more...
-          </p>
+        {remainingOwners > 0 && (
+          <p className="text-muted-foreground">+ {formatNumberWithCommas(remainingOwners)} more...</p>
         )}
       </CardContent>
     </Card>

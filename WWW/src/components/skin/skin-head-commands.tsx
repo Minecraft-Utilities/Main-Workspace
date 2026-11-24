@@ -3,7 +3,7 @@
 import { env } from "@/common/env";
 import { encodeSkinTextures } from "@/common/skin";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
-import { Skin } from "mcutils-js-api/dist/types/player/skin/skin";
+import type { Skin } from "mcutils-js-api";
 import { useState } from "react";
 import CopyTextButton from "../copy-text-button";
 import { Input } from "../ui/input";

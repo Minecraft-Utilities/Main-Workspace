@@ -3,7 +3,7 @@ import CopyLink from "@/components/copy-link";
 import SimpleTooltip from "@/components/simple-tooltip";
 import TimeAgo from "@/components/time-ago";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
-import type { FullPlayer } from "mcutils-js-api/dist/types/player/player";
+import type { FullPlayer } from "mcutils-js-api";
 
 export interface PlayerUsernameHistoryProps {
   player: FullPlayer;

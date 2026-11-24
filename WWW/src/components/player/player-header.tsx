@@ -1,4 +1,4 @@
-import { FullPlayer } from "mcutils-js-api/dist/types/player/player";
+import type { FullPlayer } from "mcutils-js-api";
 import Image from "next/image";
 
 export interface PlayerHeaderProps {

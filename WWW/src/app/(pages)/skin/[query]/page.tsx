@@ -11,8 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(props: PageProps<"/skin/[query]">): Promise<Metadata> {
   const { query } = await props.params;
-  const skinResponse = await mcUtilsApi.fetchSkin(query);
-  const skin = skinResponse.skin;
+  const { data: skin } = await mcUtilsApi.skin().fetch(query);
 
   if (!skin) {
     return {
@@ -47,8 +46,7 @@ export async function generateMetadata(props: PageProps<"/skin/[query]">): Promi
 export default async function SkinsPage({ params }: PageProps<"/skin/[query]">) {
   const { query } = await params;
 
-  const skinResponse = await mcUtilsApi.fetchSkin(query);
-  const skin = skinResponse.skin;
+  const { data: skin } = await mcUtilsApi.skin().fetch(query);
 
   if (!skin) {
     return redirect("/skins");

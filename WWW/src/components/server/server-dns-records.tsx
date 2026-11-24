@@ -1,8 +1,8 @@
-import { DnsRecord, SRVRecord } from "mcutils-js-api/dist/types/dns/dns-record";
+import type { DnsRecord, SrvRecord } from "mcutils-js-api";
 import Card, { CardContent, CardHeader } from "../ui/card";
 
-function isSrvRecord(r: DnsRecord): r is SRVRecord {
-  return r.type === "SRV";
+function isSrvRecord(record: DnsRecord): record is SrvRecord {
+  return record.type === "SRV";
 }
 
 export interface ServerDnsRecordsProps {

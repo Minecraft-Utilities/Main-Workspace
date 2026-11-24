@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NamesPage() {
-  const { nameChanges, error } = await mcUtilsApi.getRecentNameChanges();
+  const { data: nameChanges, error } = await mcUtilsApi.player().nameChanges();
 
   return (
     <div className="mt-10 flex w-full flex-col items-center justify-center gap-10">

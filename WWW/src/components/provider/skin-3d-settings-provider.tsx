@@ -1,6 +1,6 @@
 "use client";
 
-import { FullPlayer } from "mcutils-js-api/dist/types/player/player";
+import type { FullPlayer } from "mcutils-js-api";
 import {
   createContext,
   useContext,

@@ -1,6 +1,6 @@
 "use client";
 
-import { ErrorResponse } from "mcutils-js-api/dist/types/response/error-response";
+import type { ErrorResponse } from "mcutils-js-api";
 import { useState } from "react";
 import QuerySearch from "../lookup/query-search";
 import Card from "../ui/card";

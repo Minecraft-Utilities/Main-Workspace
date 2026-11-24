@@ -8,10 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useDebounce } from "@uidotdev/usehooks";
 import { Clock, Loader2, Search, Server, User, X } from "lucide-react";
-import type { BasicPlayer } from "mcutils-js-api/dist/types/player/player";
-import { ErrorResponse } from "mcutils-js-api/dist/types/response/error-response";
-import type { ServerRegistryEntry } from "mcutils-js-api/dist/types/server-registry/server-registry-entry";
-import { ServerPlatform } from "mcutils-js-api/dist/types/server/server";
+import type { BasicPlayer, ErrorResponse, Platform, ServerRegistryEntry } from "mcutils-js-api";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -119,9 +116,9 @@ export default function QuerySearch({ landingPage, className, setQueryError }: Q
   } = useQuery({
     queryKey: ["serverRegistry", debouncedQuery],
     queryFn: async (): Promise<ServerRegistryEntry[]> => {
-      const result = await mcUtilsApi.fetchServerRegistryEntries(debouncedQuery);
+      const result = await mcUtilsApi.server().search(debouncedQuery);
       if (result.error) throw new Error(result.error.message);
-      return result.entries ?? [];
+      return result.data;
     },
     placeholderData: keepPreviousData,
     enabled: !!debouncedQuery,
@@ -134,9 +131,9 @@ export default function QuerySearch({ landingPage, className, setQueryError }: Q
   } = useQuery({
     queryKey: ["playerSearch", debouncedQuery],
     queryFn: async (): Promise<BasicPlayer[] | null> => {
-      const result = await mcUtilsApi.searchPlayers(debouncedQuery);
+      const result = await mcUtilsApi.player().search(debouncedQuery);
       if (result.error) return null;
-      return result.entries ?? null;
+      return result.data;
     },
     placeholderData: keepPreviousData,
     enabled: !!debouncedQuery,
@@ -177,7 +174,7 @@ export default function QuerySearch({ landingPage, className, setQueryError }: Q
       setQueryError?.(undefined);
       setIsLookupLoading(true);
       try {
-        const result = await mcUtilsApi.fetchPlayer(trimmed);
+        const result = await mcUtilsApi.player().fetch(trimmed);
         if (result.error) {
           setLookupError(result.error);
           setQueryError?.(result.error);
@@ -198,9 +195,9 @@ export default function QuerySearch({ landingPage, className, setQueryError }: Q
   );
 
   const handleServerEdition = useCallback(
-    (edition: ServerPlatform) => {
+    (edition: Platform) => {
       if (!pendingServer) return;
-      const path = `/server/${edition}/${encodeURIComponent(pendingServer)}`;
+      const path = `/server/${edition.toLowerCase()}/${encodeURIComponent(pendingServer)}`;
       addEntry({ query: pendingServer, path });
       router.push(path);
       form.reset();

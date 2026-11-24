@@ -1,17 +1,16 @@
-import { JavaServer } from "mcutils-js-api/dist/types/server/impl/java-server";
-import { Server, ServerPlatform } from "mcutils-js-api/dist/types/server/server";
+import type { BedrockServer, JavaServer, Platform } from "mcutils-js-api";
 import Image from "next/image";
 
 interface ServerHeaderProps {
-  server: Server;
-  edition: ServerPlatform;
+  server: JavaServer | BedrockServer;
+  edition: Platform;
 }
 
 export default function ServerHeader({ server, edition }: ServerHeaderProps) {
   return (
     <header className="flex min-w-0 flex-1 flex-col items-center gap-4">
       <div className="flex flex-col items-center gap-4 md:flex-row">
-        {edition === "java" && (server as JavaServer).favicon?.base64 && (
+        {edition === "JAVA" && (server as JavaServer).favicon?.base64 && (
           <Image
             src={(server as JavaServer).favicon!.base64!}
             alt={`${server.hostname} favicon`}

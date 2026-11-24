@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import Card, { CardContent } from "@/components/ui/card";
 import Pagination from "@/components/ui/pagination";
 import { Award, Clock, TrendingUpIcon } from "lucide-react";
-import { SkinLookupSort } from "mcutils-js-api/dist/types/player/skin/skin-lookup-sort";
+import type { SkinSort } from "mcutils-js-api";
 import { Metadata } from "next";
 import Link from "next/link";
 import { ReactNode } from "react";
@@ -17,23 +17,23 @@ export const metadata: Metadata = {
   description: "The list of all seen skins for players",
 };
 
-export const SKIN_SORT_OPTIONS: Record<SkinLookupSort, { label: string; icon: ReactNode }> = {
-  trending: { label: "Trending", icon: <TrendingUpIcon /> },
-  top: { label: "Top", icon: <Award /> },
-  latest: { label: "Latest", icon: <Clock /> },
+export const SKIN_SORT_OPTIONS: Record<SkinSort, { label: string; icon: ReactNode }> = {
+  TRENDING: { label: "Trending", icon: <TrendingUpIcon /> },
+  TOP: { label: "Top", icon: <Award /> },
+  LATEST: { label: "Latest", icon: <Clock /> },
 };
 
 export default async function SkinsPage({ params }: PageProps<"/skins/[[...query]]">) {
   const { query } = await params;
 
   const rawFirst = query?.[0];
-  const isSort = rawFirst !== undefined && Object.keys(SKIN_SORT_OPTIONS).includes(rawFirst);
-  const sort = (isSort ? rawFirst : "trending") as SkinLookupSort;
+  const rawSort = rawFirst?.toUpperCase();
+  const isSort = rawSort !== undefined && Object.keys(SKIN_SORT_OPTIONS).includes(rawSort);
+  const sort = (isSort ? rawSort : "TRENDING") as SkinSort;
   const page = Number(isSort ? (query!.length >= 2 ? query![1] : "1") : (rawFirst ?? "1"));
 
-  const skinsResponse = await mcUtilsApi.fetchSkins(page, sort);
-  const skins = skinsResponse.skins;
-  const isEmpty = skins?.items.length === 0 || !skins;
+  const { data: skins } = await mcUtilsApi.skin().list(page, sort);
+  const isEmpty = !skins || skins.items.length === 0;
 
   return (
     <div className="mt-10 flex w-full flex-col items-center justify-center gap-10">
@@ -58,7 +58,7 @@ export default async function SkinsPage({ params }: PageProps<"/skins/[[...query
                   variant={sort === key ? "default" : "secondary"}
                   aria-current={sort === key ? "page" : undefined}
                 >
-                  <Link href={`/skins/${key}`}>
+                  <Link href={`/skins/${key.toLowerCase()}`}>
                     {label.icon}
                     {label.label}
                   </Link>
@@ -94,7 +94,7 @@ export default async function SkinsPage({ params }: PageProps<"/skins/[[...query
               page={page}
               totalItems={skins.totalItems ?? 0}
               itemsPerPage={skins.itemsPerPage ?? 0}
-              basePath={`/skins/${sort}`}
+              basePath={`/skins/${sort.toLowerCase()}`}
             />
           </div>
         </div>

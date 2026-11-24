@@ -1,6 +1,5 @@
 "use client";
 
-import { env } from "@/common/env";
 import { mcUtilsApi } from "@/common/mc-utils";
 import { formatDate } from "@/common/time-utils";
 import SimpleLink from "@/components/simple-link";
@@ -9,7 +8,7 @@ import TimeAgo from "@/components/time-ago";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRightIcon } from "lucide-react";
-import { RecentUsernameChange } from "mcutils-js-api/dist/types/player/recent-username-change";
+import type { RecentUsernameChange } from "mcutils-js-api";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
 import useWebSocket from "react-use-websocket";
@@ -28,9 +27,9 @@ export default function NameChanges({
   const { data: nameChanges = initialNameChanges, refetch, dataUpdatedAt } = useQuery({
     queryKey: RECENT_NAME_CHANGES_QUERY_KEY,
     queryFn: async () => {
-      const { nameChanges, error } = await mcUtilsApi.getRecentNameChanges();
+      const { data, error } = await mcUtilsApi.player().nameChanges();
       if (error) throw error;
-      return nameChanges ?? [];
+      return data;
     },
     initialData: initialNameChanges,
   });
@@ -68,7 +67,7 @@ export default function NameChanges({
             <div key={change.playerId} className="flex items-center gap-2 px-3 py-2">
               <SimpleLink href={`/player/${change.newUsername}`}>
                 <Image
-                  src={`${env.NEXT_PUBLIC_API_URL}/skins/${change.playerId}/face.png`}
+                  src={mcUtilsApi.player().skinUrl(change.playerId, "FACE")}
                   alt={change.newUsername}
                   width={22}
                   height={22}

@@ -42,7 +42,7 @@ const jsonLd = {
 };
 
 export default async function HomePage() {
-  const { skins: trendingSkins } = await mcUtilsApi.fetchSkins(1, "trending");
+  const { data: trendingSkins } = await mcUtilsApi.skin().list(1, "TRENDING");
 
   return (
     <>

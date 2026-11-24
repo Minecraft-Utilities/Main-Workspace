@@ -1,6 +1,6 @@
 "use client";
 
-import { Cape } from "mcutils-js-api/dist/types/player/cape/cape";
+import type { Cape } from "mcutils-js-api";
 import { createContext, ReactNode, useContext, useState } from "react";
 
 type SelectedCapeContextProps = {

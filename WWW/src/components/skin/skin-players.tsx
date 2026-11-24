@@ -1,5 +1,5 @@
 import { formatNumberWithCommas } from "@/common/utils";
-import { Skin } from "mcutils-js-api/dist/types/player/skin/skin";
+import type { Skin } from "mcutils-js-api";
 import OwnerCount from "../owner-count";
 import PlayerPreview from "../player/player-preview";
 import SimpleLink from "../simple-link";
@@ -10,13 +10,17 @@ interface SkinPlayersProps {
 }
 
 export default function SkinPlayers({ skin }: SkinPlayersProps) {
+  const accounts = skin.accountsSeenUsing ?? [];
+  const currentOwners = skin.currentOwners ?? 0;
+  const remainingOwners = currentOwners - accounts.length;
+
   return (
     <Card className="h-105 w-full text-sm">
       <CardHeader>
-        <OwnerCount count={skin.uniqueOwners} name="Owners" />
+        <OwnerCount count={currentOwners} name="Owners" />
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2 overflow-y-auto">
-        {skin.accountsSeenUsing?.map((account, index, accounts) => (
+        {accounts.map((account, index) => (
           <div key={account} className="flex items-center">
             <PlayerPreview
               nameOrUuid={account}
@@ -29,10 +33,8 @@ export default function SkinPlayers({ skin }: SkinPlayersProps) {
             {index !== accounts.length - 1 && <p className="text-muted-foreground">,</p>}
           </div>
         ))}
-        {skin.accountsSeenUsing && skin.accountsSeenUsing.length < skin.uniqueOwners && (
-          <p className="text-muted-foreground">
-            + {formatNumberWithCommas(skin.uniqueOwners - skin.accountsSeenUsing.length)} more...
-          </p>
+        {remainingOwners > 0 && (
+          <p className="text-muted-foreground">+ {formatNumberWithCommas(remainingOwners)} more...</p>
         )}
       </CardContent>
     </Card>

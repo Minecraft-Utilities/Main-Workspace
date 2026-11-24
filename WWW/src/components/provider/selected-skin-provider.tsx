@@ -1,6 +1,6 @@
 "use client";
 
-import { Skin } from "mcutils-js-api/dist/types/player/skin/skin";
+import type { Skin } from "mcutils-js-api";
 import { createContext, ReactNode, useContext, useState } from "react";
 
 type SelectedSkinContextProps = {

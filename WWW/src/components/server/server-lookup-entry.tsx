@@ -1,5 +1,5 @@
 import { cn } from "@/common/utils";
-import { ServerRegistryEntry } from "mcutils-js-api/dist/types/server-registry/server-registry-entry";
+import { ServerRegistryEntry } from "mcutils-js-api";
 
 interface ServerLookupEntryProps {
   entry: ServerRegistryEntry;

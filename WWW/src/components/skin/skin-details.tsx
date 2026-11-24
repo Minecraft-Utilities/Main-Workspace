@@ -1,5 +1,5 @@
 import { formatNumberWithCommas } from "@/common/utils";
-import { Skin } from "mcutils-js-api/dist/types/player/skin/skin";
+import type { Skin } from "mcutils-js-api";
 import SimpleLink from "../simple-link";
 import SimpleTooltip from "../simple-tooltip";
 import TimeAgo from "../time-ago";
@@ -22,6 +22,12 @@ export default function SkinDetails({ skin }: SkinDetailsProps) {
           >
             {skin.firstSeenUsing}
           </SimpleLink>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-sm">Current Owners</span>
+          <span className="border-primary/20 bg-primary/10 rounded-md border px-2 py-1 font-mono text-sm">
+            {formatNumberWithCommas(skin.currentOwners ?? 0)}
+          </span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-sm">Total Owners</span>

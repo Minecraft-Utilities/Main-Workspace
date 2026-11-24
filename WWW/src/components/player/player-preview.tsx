@@ -9,11 +9,11 @@ export default function PlayerPreview({ nameOrUuid, trigger }: { nameOrUuid: str
   const [open, setOpen] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["player", nameOrUuid],
-    queryFn: async () => mcUtilsApi.fetchPlayer(nameOrUuid),
+    queryFn: async () => mcUtilsApi.player().fetch(nameOrUuid),
     enabled: open,
   });
 
-  const player = data?.player;
+  const player = data?.data;
   return (
     <HoverCard openDelay={200} closeDelay={200} onOpenChange={setOpen} open={open && !!data}>
       <HoverCardTrigger asChild>{trigger}</HoverCardTrigger>

@@ -6,20 +6,22 @@ import ServerDnsRecords from "@/components/server/server-dns-records";
 import ServerHeader from "@/components/server/server-header";
 import ServerMotd from "@/components/server/server-motd";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
-import { ServerPlatform } from "mcutils-js-api/dist/types/server/server";
+import type { Platform } from "mcutils-js-api";
 import { Metadata } from "next";
 import { cache } from "react";
 
 export const dynamic = "force-dynamic";
 
-const fetchServerCached = cache((hostname: string, edition: ServerPlatform) =>
-  mcUtilsApi.fetchServer(hostname, edition)
+const fetchServerCached = cache((hostname: string, edition: Platform) =>
+  edition === "JAVA"
+    ? mcUtilsApi.server().fetchJava(hostname)
+    : mcUtilsApi.server().fetchBedrock(hostname)
 );
 
 async function getServer(platform: string, hostname: string) {
-  const edition = platform.toLowerCase() as ServerPlatform;
+  const edition: Platform = platform.toLowerCase() === "bedrock" ? "BEDROCK" : "JAVA";
 
-  const { server, error } = await fetchServerCached(decodeURIComponent(hostname), edition);
+  const { data: server, error } = await fetchServerCached(decodeURIComponent(hostname), edition);
   return { server, error, edition };
 }
 
@@ -40,7 +42,7 @@ export async function generateMetadata(props: PageProps<"/server/[platform]/[hos
   const favicon = "favicon" in server ? server.favicon?.url : undefined;
   const players = server.players;
   const serverName = server.registryEntry?.displayName ?? server.hostname;
-  const editionLabel = capitalize(edition!);
+  const editionLabel = capitalize(edition.toLowerCase());
 
   return {
     title: `${serverName}: ${editionLabel} Minecraft Server`,

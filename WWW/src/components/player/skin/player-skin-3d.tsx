@@ -3,7 +3,7 @@
 import { useSelectedCape } from "@/components/provider/selected-cape-provider";
 import { useSelectedSkin } from "@/components/provider/selected-skin-provider";
 import { useSkin3DSettings } from "@/components/provider/skin-3d-settings-provider";
-import { FullPlayer } from "mcutils-js-api/dist/types/player/player";
+import type { FullPlayer } from "mcutils-js-api";
 import { useEffect, useRef } from "react";
 import { Render } from "skin3d";
 

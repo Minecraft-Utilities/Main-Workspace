@@ -1,13 +1,11 @@
-import { BedrockServer } from "mcutils-js-api/dist/types/server/impl/bedrock-server";
-import { JavaServer } from "mcutils-js-api/dist/types/server/impl/java-server";
-import { Server, ServerPlatform } from "mcutils-js-api/dist/types/server/server";
+import type { BedrockServer, JavaServer, Platform } from "mcutils-js-api";
 import { ProfileCopyableValue, ProfileField, ProfileFields, ProfileValue } from "@/components/profile-field";
 import TimeAgo from "../time-ago";
 import Card, { CardContent, CardHeader } from "../ui/card";
 
 export interface ServerDetailsProps {
-  server: Server;
-  edition: ServerPlatform;
+  server: JavaServer | BedrockServer;
+  edition: Platform;
 }
 
 export function ServerDetails({ server, edition }: ServerDetailsProps) {
@@ -38,7 +36,7 @@ export function ServerDetails({ server, edition }: ServerDetailsProps) {
             <ProfileValue>{String(server.port)}</ProfileValue>
           </ProfileField>
 
-          {edition === "java" && (
+          {edition === "JAVA" && (
             <>
               {javaServer.version && (
                 <ProfileField label="Protocol version">
@@ -50,7 +48,7 @@ export function ServerDetails({ server, edition }: ServerDetailsProps) {
               <ProfileField label="Blocked by Mojang">
                 <ProfileValue>{javaServer.mojangBlocked ? "Yes" : "No"}</ProfileValue>
               </ProfileField>
-              {javaServer.isModded && (
+              {javaServer.modded && (
                 <ProfileField label="Modded server">
                   <ProfileValue>{`${javaServer.forgeData?.mods?.length ?? 0} mods`}</ProfileValue>
                 </ProfileField>
@@ -70,7 +68,7 @@ export function ServerDetails({ server, edition }: ServerDetailsProps) {
             </>
           )}
 
-          {edition === "bedrock" && (
+          {edition === "BEDROCK" && (
             <>
               {bedrockServer.version?.name && (
                 <ProfileField label="Version">

@@ -3,24 +3,24 @@
 import { cn } from "@/common/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Coffee, Layers } from "lucide-react";
-import { ServerPlatform } from "mcutils-js-api/dist/types/server/server";
+import { type Platform } from "mcutils-js-api";
 
 export interface ServerEditionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   serverAddress: string;
-  onSelectEdition: (edition: ServerPlatform) => void;
+  onSelectEdition: (edition: Platform) => void;
 }
 
 const editionOptions: {
-  type: ServerPlatform;
+  type: Platform;
   label: string;
   icon: typeof Coffee;
   description: string;
 }[] = [
-  { type: "java", label: "Java", icon: Coffee, description: "PC, Mac, Linux" },
+  { type: "JAVA", label: "Java", icon: Coffee, description: "PC, Mac, Linux" },
   {
-    type: "bedrock",
+    type: "BEDROCK",
     label: "Bedrock",
     icon: Layers,
     description: "Console, Mobile, Windows 10",

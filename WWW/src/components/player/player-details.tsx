@@ -1,7 +1,7 @@
 import { formatNumberWithCommas } from "@/common/utils";
 import { ProfileCopyableValue, ProfileField, ProfileFields, ProfileValue } from "@/components/profile-field";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
-import { FullPlayer } from "mcutils-js-api/dist/types/player/player";
+import type { FullPlayer } from "mcutils-js-api";
 
 export interface PlayerDetailsProps {
   player: FullPlayer;

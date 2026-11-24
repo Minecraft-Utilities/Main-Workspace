@@ -1,16 +1,15 @@
-import { JavaServer } from "mcutils-js-api/dist/types/server/impl/java-server";
-import { Server, ServerPlatform } from "mcutils-js-api/dist/types/server/server";
+import type { BedrockServer, JavaServer, Platform } from "mcutils-js-api";
 import Image from "next/image";
 import Card, { CardContent } from "../ui/card";
 
 interface ServerMotdProps {
-  server: Server;
-  edition: ServerPlatform;
+  server: JavaServer | BedrockServer;
+  edition: Platform;
 }
 
 export default function ServerMotd({ server, edition }: ServerMotdProps) {
   return (
-    edition === "java" &&
+    edition === "JAVA" &&
     (server as JavaServer).motd?.preview && (
       <section className="flex flex-col gap-4">
         <Card className="h-fit items-center overflow-hidden p-0">

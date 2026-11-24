@@ -1,4 +1,5 @@
-import { Cape } from "mcutils-js-api/dist/types/player/cape/cape";
+import { formatNumberWithCommas } from "@/common/utils";
+import type { Cape } from "mcutils-js-api";
 import SimpleLink from "../simple-link";
 import SimpleTooltip from "../simple-tooltip";
 import TimeAgo from "../time-ago";
@@ -21,6 +22,18 @@ export default function CapeDetails({ cape }: CapeDetailsProps) {
           >
             {cape.firstSeenUsing}
           </SimpleLink>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-sm">Current Owners</span>
+          <span className="border-primary/20 bg-primary/10 rounded-md border px-2 py-1 font-mono text-sm">
+            {formatNumberWithCommas(cape.currentOwners ?? 0)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-sm">Total Owners</span>
+          <span className="border-primary/20 bg-primary/10 rounded-md border px-2 py-1 font-mono text-sm">
+            {formatNumberWithCommas(cape.uniqueOwners)}
+          </span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-sm">First Seen</span>

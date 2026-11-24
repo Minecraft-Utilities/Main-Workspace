@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/common/utils";
-import { FullPlayer } from "mcutils-js-api/dist/types/player/player";
+import type { FullPlayer } from "mcutils-js-api";
 import Image from "next/image";
 import { useRef } from "react";
 import { useSelectedCape } from "../provider/selected-cape-provider";

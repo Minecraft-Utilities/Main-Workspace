@@ -4,7 +4,7 @@ import { skin3DAnimations, useSkin3DSettings } from "@/components/provider/skin-
 import SimpleTooltip from "@/components/simple-tooltip";
 import { Button } from "@/components/ui/button";
 import { LayersIcon } from "lucide-react";
-import { FullPlayer } from "mcutils-js-api/dist/types/player/player";
+import type { FullPlayer } from "mcutils-js-api";
 import Image from "next/image";
 import type { ReactNode } from "react";
 

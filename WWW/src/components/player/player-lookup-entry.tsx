@@ -1,5 +1,5 @@
 import { cn } from "@/common/utils";
-import type { BasicPlayer } from "mcutils-js-api/dist/types/player/player";
+import type { BasicPlayer } from "mcutils-js-api";
 import Image from "next/image";
 
 interface PlayerLookupEntryProps {
