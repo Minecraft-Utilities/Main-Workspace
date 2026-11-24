@@ -52,9 +52,9 @@ public class CapeService {
     private final CoalescingLoader<String, byte[]> textureLoader = new CoalescingLoader<>(Main.EXECUTOR);
     private final CoalescingLoader<String, CapeRow> capeCreationLoader = new CoalescingLoader<>(Runnable::run);
     /**
-     * Local cache for downscaled (non-max) cape renders; the canonical max-size PNG lives in S3.
+     * Local cache for cape renders (canonical and downscaled); S3 holds the canonical PNG as the fallback.
      */
-    private final com.google.common.cache.Cache<String, byte[]> downscaledRenderCache = com.google.common.cache.CacheBuilder.newBuilder()
+    private final com.google.common.cache.Cache<String, byte[]> renderedCapeCache = com.google.common.cache.CacheBuilder.newBuilder()
             .expireAfterAccess(6, java.util.concurrent.TimeUnit.HOURS)
             .maximumWeight(128L * 1024 * 1024)
             .weigher((String key, byte[] value) -> value.length)
@@ -239,7 +239,13 @@ public class CapeService {
         StorageService.Bucket bucket = StorageService.Bucket.RENDERED_VANILLA_CAPES;
 
         long cacheStart = System.currentTimeMillis();
-        byte[] canonicalBytes = cacheEnabled ? this.storageService.get(bucket, canonicalKey) : null;
+        byte[] canonicalBytes = cacheEnabled ? this.renderedCapeCache.getIfPresent(canonicalKey) : null;
+        if (canonicalBytes == null && cacheEnabled) {
+            canonicalBytes = this.storageService.get(bucket, canonicalKey);
+            if (canonicalBytes != null) {
+                this.renderedCapeCache.put(canonicalKey, canonicalBytes);
+            }
+        }
         BufferedImage canonicalImage = null;
 
         if (canonicalBytes == null) {
@@ -249,6 +255,7 @@ public class CapeService {
             log.debug("Took {}ms to render cape part for cape: {}", System.currentTimeMillis() - renderStart, cape.getTextureId());
             MetricService.getMetric(CapeRenderMetric.class).recordMiss(System.currentTimeMillis() - renderStart);
             if (cacheEnabled) {
+                this.renderedCapeCache.put(canonicalKey, canonicalBytes);
                 final byte[] toUpload = canonicalBytes;
                 CompletableFuture.runAsync(() -> this.storageService.upload(bucket, canonicalKey, MediaType.IMAGE_PNG_VALUE, toUpload), Main.EXECUTOR).exceptionally(ex -> {
                     log.warn("Save failed for cape part {}: {}", canonicalKey, ex.getMessage());
@@ -265,14 +272,14 @@ public class CapeService {
         }
 
         String sizeKey = canonicalKey + "-" + size;
-        byte[] sizeBytes = this.downscaledRenderCache.getIfPresent(sizeKey);
+        byte[] sizeBytes = this.renderedCapeCache.getIfPresent(sizeKey);
         if (sizeBytes != null) {
             return sizeBytes;
         }
 
         BufferedImage image = canonicalImage != null ? canonicalImage : ImageUtils.decodeImage(canonicalBytes);
         sizeBytes = ImageUtils.imageToBytes(ImageUtils.resizeToHeight(image, size), 1);
-        this.downscaledRenderCache.put(sizeKey, sizeBytes);
+        this.renderedCapeCache.put(sizeKey, sizeBytes);
         return sizeBytes;
     }
 }

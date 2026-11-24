@@ -18,7 +18,7 @@ public class VanillaCapeRenderer extends Renderer<VanillaCape> {
     @SneakyThrows
     public BufferedImage render(VanillaCape input, int size, RenderOptions options) {
         byte[] capeBytes = CapeService.INSTANCE.getCapeTexture(input);
-        BufferedImage capeImage = ImageUtils.decodeImage(capeBytes);
+        BufferedImage capeImage = ImageUtils.decodeTexture(capeBytes);
 
         CapeModelCoordinates.Vanilla capeFront = CapeModelCoordinates.Vanilla.CAPE_FRONT;
         Coordinates coords = capeFront.getCoordinates();

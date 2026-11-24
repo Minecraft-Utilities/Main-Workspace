@@ -45,7 +45,7 @@ public class FullBodyIsoRendererBase {
     @SneakyThrows
     public BufferedImage render(Skin skin, @Nullable VanillaCape cape, Side side, boolean renderOverlays, int size, double yawDeg, double pitchDeg) {
         byte[] skinBytes = SkinService.INSTANCE.getSkinTexture(skin.getTextureId(), skin.getRawTextureUrl(), true);
-        BufferedImage skinImage = ImageUtils.decodeImage(skinBytes);
+        BufferedImage skinImage = ImageUtils.decodeTexture(skinBytes);
         List<Face> skinFaces = PlayerModel.buildFaces(skin, renderOverlays);
 
         double yaw = yawDeg + (side == Side.BACK ? 45.0 : 225);
@@ -53,7 +53,7 @@ public class FullBodyIsoRendererBase {
 
         if (cape != null) {
             byte[] capeBytes = CapeService.INSTANCE.getCapeTexture(cape);
-            BufferedImage capeImage = ImageUtils.decodeImage(capeBytes);
+            BufferedImage capeImage = ImageUtils.decodeTexture(capeBytes);
             List<Face> capeFaces = PlayerModel.buildCapeFaces();
             List<TexturedFaces> batches = new ArrayList<>();
             batches.add(new TexturedFaces(skinImage, skinFaces));
