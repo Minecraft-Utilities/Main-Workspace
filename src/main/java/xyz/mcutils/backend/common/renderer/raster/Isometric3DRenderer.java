@@ -1,15 +1,12 @@
 package xyz.mcutils.backend.common.renderer.raster;
 
-import lombok.extern.slf4j.Slf4j;
 import xyz.mcutils.backend.common.math.Vector3;
 import xyz.mcutils.backend.common.math.Vector3Utils;
 import xyz.mcutils.backend.common.renderer.IsometricLighting;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -17,9 +14,10 @@ import java.util.List;
  * orthographically projects, depth-sorts, and draws quads.
  * Supports multiple textures (e.g. skin 64×64). Used by full-body and head renderers.
  */
-@Slf4j
 public class Isometric3DRenderer {
     public static final Isometric3DRenderer INSTANCE = new Isometric3DRenderer();
+
+    private static final int FACE_STRIDE = 10;
 
     /**
      * Renders the given textured face batches with the given view onto an image.
@@ -38,105 +36,151 @@ public class Isometric3DRenderer {
         Vector3 right = Vector3Utils.normalize(Vector3Utils.cross(new Vector3(0, 1, 0), fwd));
         Vector3 up = Vector3Utils.normalize(Vector3Utils.cross(fwd, right));
 
-        double yaw = view.yawDeg();
-        double pitch = view.pitchDeg();
+        // Rotation (yaw about Y, then pitch about X) composed with the view basis, so each vertex is a single
+        // matrix multiply. Rows give view X (right), view Y (up) and depth (-forward).
+        double yaw = Math.toRadians(view.yawDeg());
+        double pitch = Math.toRadians(view.pitchDeg());
+        double cy = Math.cos(yaw), sy = Math.sin(yaw);
+        double cp = Math.cos(pitch), sp = Math.sin(pitch);
+        double[] rot = {
+                cy, 0, -sy,
+                -sp * sy, cp, -sp * cy,
+                cp * sy, sp, cp * cy
+        };
+        double[] mx = viewRow(right.x(), right.y(), right.z(), rot);
+        double[] my = viewRow(up.x(), up.y(), up.z(), rot);
+        double[] mz = viewRow(-fwd.x(), -fwd.y(), -fwd.z(), rot);
+        double tx = target.x() - eye.x(), ty = target.y() - eye.y(), tz = target.z() - eye.z();
+        double cx = right.x() * tx + right.y() * ty + right.z() * tz;
+        double cyv = up.x() * tx + up.y() * ty + up.z() * tz;
+        double czv = -(fwd.x() * tx + fwd.y() * ty + fwd.z() * tz);
+        // A face is front-facing when its rotated normal points against the view direction.
+        double[] facing = viewRow(fwd.x(), fwd.y(), fwd.z(), rot);
+        double[] sun = {IsometricLighting.SUN_DIRECTION.x(), IsometricLighting.SUN_DIRECTION.y(), IsometricLighting.SUN_DIRECTION.z()};
+        double[] sunLocal = viewRow(sun[0], sun[1], sun[2], rot);
 
-        int totalFaces = batches.stream().mapToInt(b -> b.faces().size()).sum();
-        List<ProjectedFaceWithTexture> projected = new ArrayList<>(totalFaces);
+        int totalFaces = 0;
+        for (TexturedFaces batch : batches) {
+            totalFaces += batch.faces().size();
+        }
+        // Per face: x0 y0 x1 y1 x2 y2 pd0 pd1 pd2 brightness
+        double[] data = new double[totalFaces * FACE_STRIDE];
+        double[] depth = new double[totalFaces];
+        int[] batchOf = new int[totalFaces];
+        Face[] faceOf = new Face[totalFaces];
+        int[] order = new int[totalFaces];
+        int visible = 0;
 
         double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
         double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
 
         int faceIndex = 0;
         for (int batchIndex = 0; batchIndex < batches.size(); batchIndex++) {
-            TexturedFaces batch = batches.get(batchIndex);
-            BufferedImage texture = batch.texture();
-            int texW = texture.getWidth();
-            int texH = texture.getHeight();
+            for (Face face : batches.get(batchIndex).faces()) {
+                int base = faceIndex * FACE_STRIDE;
+                double x = 0, y = 0, z = 0;
+                Vector3[] vs = {face.v0(), face.v1(), face.v2(), face.v3()};
+                double depthSum = 0;
+                for (int i = 0; i < 4; i++) {
+                    Vector3 v = vs[i];
+                    double px = v.x() - target.x(), py = v.y() - target.y(), pz = v.z() - target.z();
+                    x = mx[0] * px + mx[1] * py + mx[2] * pz + cx;
+                    y = my[0] * px + my[1] * py + my[2] * pz + cyv;
+                    z = mz[0] * px + mz[1] * py + mz[2] * pz + czv;
+                    depthSum += z;
+                    if (i < 3) {
+                        data[base + i * 2] = x;
+                        data[base + i * 2 + 1] = y;
+                        data[base + 6 + i] = z;
+                    }
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                }
 
-            for (Face face : batch.faces()) {
-                var rotatedNormal = Vector3Utils.rotateX(Vector3Utils.rotateY(face.normal(), yaw), pitch);
-                double brightness = IsometricLighting.computeBrightness(rotatedNormal, IsometricLighting.SUN_DIRECTION, IsometricLighting.MIN_BRIGHTNESS);
-
-                Vector3 v0 = Vector3Utils.rotAround(face.v0(), target, yaw, pitch);
-                Vector3 v1 = Vector3Utils.rotAround(face.v1(), target, yaw, pitch);
-                Vector3 v2 = Vector3Utils.rotAround(face.v2(), target, yaw, pitch);
-                Vector3 v3 = Vector3Utils.rotAround(face.v3(), target, yaw, pitch);
-                double[] p0 = Vector3Utils.project(v0, eye, fwd, right, up);
-                double[] p1 = Vector3Utils.project(v1, eye, fwd, right, up);
-                double[] p2 = Vector3Utils.project(v2, eye, fwd, right, up);
-                double[] p3 = Vector3Utils.project(v3, eye, fwd, right, up);
-
-                double depth = (p0[2] + p1[2] + p2[2] + p3[2]) / 4.0;
-
-                double x0 = p0[0], y0 = p0[1], x1 = p1[0], y1 = p1[1], x2 = p2[0], y2 = p2[1], x3 = p3[0], y3 = p3[1];
-                projected.add(new ProjectedFaceWithTexture(x0, y0, x1, y1, x2, y2, x3, y3, depth, p0[2], p1[2], p2[2], face.u0(), face.v0_(), face.u1(), face.v1_(), brightness, batchIndex, texW, texH, faceIndex++));
-                minX = Math.min(minX, Math.min(Math.min(x0, x1), Math.min(x2, x3)));
-                maxX = Math.max(maxX, Math.max(Math.max(x0, x1), Math.max(x2, x3)));
-                minY = Math.min(minY, Math.min(Math.min(y0, y1), Math.min(y2, y3)));
-                maxY = Math.max(maxY, Math.max(Math.max(y0, y1), Math.max(y2, y3)));
+                Vector3 n = face.normal();
+                double nLen = Math.sqrt(n.x() * n.x() + n.y() * n.y() + n.z() * n.z());
+                if (nLen < 1e-10) {
+                    nLen = 1;
+                }
+                if ((facing[0] * n.x() + facing[1] * n.y() + facing[2] * n.z()) / nLen < 1e-9) {
+                    double lit = (sunLocal[0] * n.x() + sunLocal[1] * n.y() + sunLocal[2] * n.z()) / nLen;
+                    data[base + 9] = Math.max(0, Math.min(1, IsometricLighting.MIN_BRIGHTNESS + (1.0 - IsometricLighting.MIN_BRIGHTNESS) * (1.0 + lit) * 0.5));
+                    depth[faceIndex] = depthSum / 4.0;
+                    order[visible++] = faceIndex;
+                }
+                batchOf[faceIndex] = batchIndex;
+                faceOf[faceIndex] = face;
+                faceIndex++;
             }
         }
 
-        // Back-to-front (painter's) sort: depths are negative (viewZ = -(fwd·(world-eye))), so ascending
-        // order puts the most-negative (farthest) faces first. thenComparingInt keeps coplanar faces stable
-        // (base layer drawn before overlay) so alpha compositing works correctly.
-        projected.sort(Comparator.comparingDouble((ProjectedFaceWithTexture p) -> p.depth).thenComparingInt(p -> p.faceIndex));
-        double modelW = maxX - minX;
-        double modelH = maxY - minY;
-        if (modelW < 1) {
-            modelW = 1;
+        // Back-to-front (painter's) order: depths are negative (-(fwd·(world-eye))), so ascending puts the
+        // farthest faces first. Insertion sort is stable, keeping coplanar overlay faces after their base layer.
+        for (int i = 1; i < visible; i++) {
+            int cur = order[i];
+            double d = depth[cur];
+            int j = i - 1;
+            while (j >= 0 && depth[order[j]] > d) {
+                order[j + 1] = order[j];
+                j--;
+            }
+            order[j + 1] = cur;
         }
-        if (modelH < 1) {
-            modelH = 1;
-        }
+
+        double modelW = Math.max(1, maxX - minX);
+        double modelH = Math.max(1, maxY - minY);
         double scale = Math.min(width / modelW, size / modelH);
         double offsetX = (width - modelW * scale) / 2 - minX * scale;
         double offsetY = maxY * scale;
 
         BufferedImage result = new BufferedImage(width, size, BufferedImage.TYPE_INT_ARGB);
         int[] outPixels = ((DataBufferInt) result.getRaster().getDataBuffer()).getData();
-        // Per-pixel depth buffer. Depths are negative (viewZ = -(fwd·(world-eye))), so objects closer to
-        // the camera have a LARGER (less-negative) depth value. Initialise to -∞ so any real depth wins.
+        // Depths are negative, so closer to the camera means larger; -∞ lets any real depth win.
         float[] zBuffer = new float[width * size];
         Arrays.fill(zBuffer, Float.NEGATIVE_INFINITY);
 
-        // Preload texture pixels per batch (avoids repeated getRGB in loop)
         int[][] batchTexPixels = new int[batches.size()][];
+        int[] batchTexW = new int[batches.size()];
+        int[] batchTexH = new int[batches.size()];
         for (int i = 0; i < batches.size(); i++) {
-            batchTexPixels[i] = QuadRasterizer.getTexturePixels(batches.get(i).texture());
+            BufferedImage texture = batches.get(i).texture();
+            batchTexPixels[i] = QuadRasterizer.getTexturePixels(texture);
+            batchTexW[i] = texture.getWidth();
+            batchTexH[i] = texture.getHeight();
         }
 
-        for (ProjectedFaceWithTexture p : projected) {
-            int[] texPixels = batchTexPixels[p.textureIndex];
-            int texW = p.texW;
-            int texH = p.texH;
+        for (int k = 0; k < visible; k++) {
+            int idx = order[k];
+            int base = idx * FACE_STRIDE;
+            Face face = faceOf[idx];
+            int batch = batchOf[idx];
+            int texW = batchTexW[batch];
+            int texH = batchTexH[batch];
 
-            double dx0 = p.x0 * scale + offsetX;
-            double dy0 = offsetY - p.y0 * scale;
-            double dx1 = p.x1 * scale + offsetX;
-            double dy1 = offsetY - p.y1 * scale;
-            double dx2 = p.x2 * scale + offsetX;
-            double dy2 = offsetY - p.y2 * scale;
+            // Texture subrect: floor(u0), floor(v0), ceil(u1) - floor(u0), ceil(v1) - floor(v0)
+            int sx1 = Math.max(0, Math.min((int) Math.floor(face.u0()), texW - 1));
+            int sy1 = Math.max(0, Math.min((int) Math.floor(face.v0_()), texH - 1));
+            int sx2 = Math.max(sx1 + 1, Math.min((int) Math.ceil(face.u1()), texW));
+            int sy2 = Math.max(sy1 + 1, Math.min((int) Math.ceil(face.v1_()), texH));
 
-            // Same texture subrect as old Graphics2D path: floor(u0), floor(v0), ceil(u1)-floor(u0), ceil(v1)-floor(v0)
-            int sx1 = (int) Math.floor(p.u0);
-            int sy1 = (int) Math.floor(p.v0_);
-            int sx2 = (int) Math.ceil(p.u1);
-            int sy2 = (int) Math.ceil(p.v1_);
-            sx1 = Math.max(0, Math.min(sx1, texW - 1));
-            sy1 = Math.max(0, Math.min(sy1, texH - 1));
-            sx2 = Math.max(sx1 + 1, Math.min(sx2, texW));
-            sy2 = Math.max(sy1 + 1, Math.min(sy2, texH));
-            int tw = sx2 - sx1;
-            int th = sy2 - sy1;
-            if (tw <= 0 || th <= 0) {
-                continue;
-            }
-
-            QuadRasterizer.rasterizeQuad(outPixels, zBuffer, width, size, dx0, dy0, dx1, dy1, dx2, dy2, p.pd0(), p.pd1(), p.pd2(), sx1, sy1, tw, th, texPixels, texW, texH, (float) p.brightness());
+            QuadRasterizer.rasterizeQuad(outPixels, zBuffer, width, size,
+                    data[base] * scale + offsetX, offsetY - data[base + 1] * scale,
+                    data[base + 2] * scale + offsetX, offsetY - data[base + 3] * scale,
+                    data[base + 4] * scale + offsetX, offsetY - data[base + 5] * scale,
+                    data[base + 6], data[base + 7], data[base + 8],
+                    sx1, sy1, sx2 - sx1, sy2 - sy1, batchTexPixels[batch], texW, (float) data[base + 9]);
         }
         return result;
+    }
+
+    private static double[] viewRow(double ax, double ay, double az, double[] rot) {
+        return new double[]{
+                ax * rot[0] + ay * rot[3] + az * rot[6],
+                ax * rot[1] + ay * rot[4] + az * rot[7],
+                ax * rot[2] + ay * rot[5] + az * rot[8]
+        };
     }
 
     /**
@@ -162,9 +206,4 @@ public class Isometric3DRenderer {
      * Pairs a texture with its faces. Used for multi-texture rendering.
      */
     public record TexturedFaces(BufferedImage texture, List<Face> faces) {}
-
-    private record ProjectedFaceWithTexture(double x0, double y0, double x1, double y1, double x2, double y2, double x3,
-                                            double y3, double depth, double pd0, double pd1, double pd2,
-                                            double u0, double v0_, double u1, double v1_,
-                                            double brightness, int textureIndex, int texW, int texH, int faceIndex) {}
 }
