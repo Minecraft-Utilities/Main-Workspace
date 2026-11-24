@@ -5,6 +5,8 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.imageio.ImageIO;
+import java.awt.AlphaComposite;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.io.ByteArrayInputStream;
@@ -90,10 +92,27 @@ public class ImageUtils {
             if (image == null) {
                 throw new IllegalStateException("Failed to decode image");
             }
-            return image;
+            return toIntArgb(image);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to decode image", e);
         }
+    }
+
+    /**
+     * Returns the image as {@link BufferedImage#TYPE_INT_ARGB}. Decoded PNGs are byte-interleaved,
+     * where every {@code getRGB} goes through a per-pixel color model conversion that dominates
+     * resize time; a single bulk copy up front keeps the pixel loops on the int[] fast path.
+     */
+    public static BufferedImage toIntArgb(BufferedImage image) {
+        if (image.getType() == BufferedImage.TYPE_INT_ARGB) {
+            return image;
+        }
+        BufferedImage converted = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = converted.createGraphics();
+        g.setComposite(AlphaComposite.Src);
+        g.drawImage(image, 0, 0, null);
+        g.dispose();
+        return converted;
     }
 
     /**
