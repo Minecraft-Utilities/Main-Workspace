@@ -52,12 +52,6 @@ public interface PlayerRepository extends JpaRepository<PlayerRow, UUID> {
     @Query("SELECT p.id FROM PlayerRow p WHERE p.id IN :ids")
     Set<UUID> findExistingIds(@Param("ids") Collection<UUID> ids);
 
-    @Query("SELECT p FROM PlayerRow p WHERE p.id > :cursor ORDER BY p.id ASC")
-    List<PlayerRow> findPlayersAfter(@Param("cursor") UUID cursor, Pageable pageable);
-
-    @Query("SELECT UPPER(p.username) FROM PlayerRow p WHERE UPPER(p.username) IN :usernames")
-    Set<String> findExistingUsernamesUpper(@Param("usernames") Collection<String> usernames);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM PlayerRow p WHERE p.id = :id")
     Optional<PlayerRow> findByIdForUpdate(@Param("id") UUID id);
