@@ -1,7 +1,7 @@
 package xyz.mcutils.backend.model.domain.server;
 
 import lombok.NonNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import xyz.mcutils.backend.common.color.ColorUtils;
 import xyz.mcutils.backend.config.AppConfig;
 import xyz.mcutils.backend.model.token.server.JavaServerStatusToken;
@@ -18,7 +18,7 @@ import java.util.UUID;
  * @param sample A sample of players on this server, null or empty if no sample.
  * @author Braydon
  */
-public record Players(int online, int max, @Nullable Sample[] sample) {
+public record Players(int online, int max, Sample @Nullable [] sample) {
     /**
      * Create new player count data from a token.
      *

@@ -47,6 +47,13 @@ public class Skin extends Texture implements PartRenderable<Skin, Skin.SkinPart>
     private Instant firstSeen;
 
     /**
+     * The number of players currently using this skin (only set on detail responses).
+     */
+    @Setter
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Long currentOwners;
+
+    /**
      * The first player seen using this skin (only set on detail responses).
      */
     @Setter

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jspecify.annotations.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import xyz.mcutils.backend.common.EnumUtils;
 import xyz.mcutils.backend.common.renderer.RenderOptions;
@@ -37,6 +38,13 @@ public class VanillaCape extends Cape<VanillaCape.Part> {
     private List<String> accountsSeenOwning;
 
     /**
+     * The number of players currently wearing this cape (only set on detail responses).
+     */
+    @Setter
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Long currentOwners;
+
+    /**
      * The first player seen using this cape (only set on detail responses).
      */
     @Setter
@@ -46,6 +54,7 @@ public class VanillaCape extends Cape<VanillaCape.Part> {
     /**
      * The name of this cape.
      */
+    @Nullable
     private String name;
 
     /**

@@ -132,6 +132,7 @@ public class SkinService {
 
         List<String> usersUsing = this.playerRepository.findUsernamesBySkinId(skinRow.getId(), PageRequest.of(0, 250));
         skin.setAccountsSeenUsing(usersUsing);
+        skin.setCurrentOwners(this.playerRepository.countBySkinId(skinRow.getId()));
 
         return skin;
     }

@@ -1,6 +1,6 @@
 package xyz.mcutils.backend.model.domain;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import xyz.mcutils.backend.model.domain.asn.AsnLookup;
 import xyz.mcutils.backend.model.domain.geo.GeoLocation;
 

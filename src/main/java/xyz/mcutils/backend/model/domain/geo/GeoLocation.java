@@ -1,5 +1,7 @@
 package xyz.mcutils.backend.model.domain.geo;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * The location of the server.
  *
@@ -13,5 +15,6 @@ package xyz.mcutils.backend.model.domain.geo;
  * @param longitude   The longitude of the server.
  * @param flagUrl     Direct link to a url for the country flag.
  */
-public record GeoLocation(String country, String countryCode, String region, String city, String timeZone,
-                          String postalCode, Double latitude, Double longitude, String flagUrl) {}
+public record GeoLocation(String country, String countryCode, @Nullable String region, @Nullable String city,
+                          @Nullable String timeZone, @Nullable String postalCode, @Nullable Double latitude,
+                          @Nullable Double longitude, String flagUrl) {}

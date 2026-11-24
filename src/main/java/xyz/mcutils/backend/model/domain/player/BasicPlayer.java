@@ -2,7 +2,7 @@ package xyz.mcutils.backend.model.domain.player;
 
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
 import xyz.mcutils.backend.model.domain.cape.impl.VanillaCape;
 import xyz.mcutils.backend.model.domain.skin.Skin;

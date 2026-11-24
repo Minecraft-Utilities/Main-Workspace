@@ -49,6 +49,10 @@ public interface PlayerRepository extends JpaRepository<PlayerRow, UUID> {
     @Query("SELECT p.username FROM PlayerRow p WHERE p.cape.id = :capeId")
     List<String> findUsernamesByCapeId(long capeId, Pageable pageable);
 
+    long countBySkinId(long skinId);
+
+    long countByCapeId(long capeId);
+
     @Query("SELECT p.id FROM PlayerRow p WHERE p.id IN :ids")
     Set<UUID> findExistingIds(@Param("ids") Collection<UUID> ids);
 
