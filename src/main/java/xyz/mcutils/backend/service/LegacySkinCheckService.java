@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.RateLimiter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cache.CacheManager;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -15,7 +16,6 @@ import xyz.mcutils.backend.common.WebRequest;
 import xyz.mcutils.backend.common.redis.RedisQueue;
 import xyz.mcutils.backend.common.redis.RedisQueueFactory;
 import xyz.mcutils.backend.exception.impl.RateLimitException;
-import xyz.mcutils.backend.model.domain.skin.Skin;
 import xyz.mcutils.backend.repository.postgres.SkinRepository;
 
 import java.awt.image.BufferedImage;
@@ -46,8 +46,16 @@ public class LegacySkinCheckService {
     private final WebRequest webRequest;
     private final CacheManager cacheManager;
     private final AtomicBoolean running = new AtomicBoolean(true);
+    private final String texturesEndpoint;
 
-    public LegacySkinCheckService(RedisQueueFactory queueFactory, SkinRepository skinRepository, WebRequest webRequest, CacheManager cacheManager) {
+    public LegacySkinCheckService(
+            RedisQueueFactory queueFactory,
+            SkinRepository skinRepository,
+            WebRequest webRequest,
+            CacheManager cacheManager,
+            @Value("${mc-utils.mojang.textures-url:https://textures.minecraft.net}") String texturesEndpoint
+    ) {
+        this.texturesEndpoint = texturesEndpoint;
         this.checkQueue = queueFactory.getQueue(QUEUE_NAME);
         this.skinRepository = skinRepository;
         this.webRequest = webRequest;
@@ -159,7 +167,7 @@ public class LegacySkinCheckService {
 
     private CheckResult checkLegacy(String textureId) {
         try {
-            String textureUrl = Skin.CDN_URL.formatted(textureId);
+            String textureUrl = texturesEndpoint + "/texture/" + textureId;
             byte[] bytes = webRequest.request(textureUrl).asBytes();
             if (bytes == null) {
                 log.debug("No response fetching skin texture {}", textureId);

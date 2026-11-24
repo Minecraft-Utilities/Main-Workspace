@@ -7,6 +7,7 @@ import com.google.common.hash.Hashing;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import xyz.mcutils.backend.common.WebRequest;
@@ -30,13 +31,10 @@ public class MojangService {
     private static final Splitter DOT_SPLITTER = Splitter.on('.');
     private static final Joiner DOT_JOINER = Joiner.on('.');
 
-    /**
-     * The Mojang API endpoints.
-     */
-    private static final String SESSION_SERVER_ENDPOINT = "https://sessionserver.mojang.com";
-    private static final String API_ENDPOINT = "https://api.mojang.com";
-    private static final String FETCH_BLOCKED_SERVERS = SESSION_SERVER_ENDPOINT + "/blockedservers";
     private static final String API_MOJANG = "mojang";
+
+    private final String sessionServerEndpoint;
+    private final String apiEndpoint;
 
     /**
      * A list of banned server hashes provided by Mojang.
@@ -49,8 +47,14 @@ public class MojangService {
 
     private final WebRequest webRequest;
 
-    public MojangService(WebRequest webRequest) {
+    public MojangService(
+            WebRequest webRequest,
+            @Value("${mc-utils.mojang.session-server-url:https://sessionserver.mojang.com}") String sessionServerEndpoint,
+            @Value("${mc-utils.mojang.api-url:https://api.mojang.com}") String apiEndpoint
+    ) {
         this.webRequest = webRequest;
+        this.sessionServerEndpoint = sessionServerEndpoint;
+        this.apiEndpoint = apiEndpoint;
         updateBlockedServers();
     }
 
@@ -65,7 +69,7 @@ public class MojangService {
         long start = System.currentTimeMillis();
         boolean success = false;
         try {
-            MojangProfileToken result = webRequest.mojangProfileRequest(SESSION_SERVER_ENDPOINT + "/session/minecraft/profile/" + id).useProxy().as(MojangProfileToken.class);
+            MojangProfileToken result = webRequest.mojangProfileRequest(sessionServerEndpoint + "/session/minecraft/profile/" + id).useProxy().as(MojangProfileToken.class);
             success = result != null;
             return result;
         } finally {
@@ -84,7 +88,7 @@ public class MojangService {
         long start = System.currentTimeMillis();
         boolean success = false;
         try {
-            MojangUsernameToUuidToken result = webRequest.mojangProfileRequest(API_ENDPOINT + "/users/profiles/minecraft/" + id).useProxy().as(MojangUsernameToUuidToken.class);
+            MojangUsernameToUuidToken result = webRequest.mojangProfileRequest(apiEndpoint + "/users/profiles/minecraft/" + id).useProxy().as(MojangUsernameToUuidToken.class);
             success = result != null;
             return result;
         } finally {
@@ -160,7 +164,7 @@ public class MojangService {
     @Scheduled(cron = "0 0 0 * * *")
     private void updateBlockedServers() {
         log.info("Fetching blocked servers from Mojang");
-        byte[] bytes = webRequest.request(FETCH_BLOCKED_SERVERS).asBytes();
+        byte[] bytes = webRequest.request(sessionServerEndpoint + "/blockedservers").asBytes();
         if (bytes == null) {
             log.error("Failed to fetch blocked servers from Mojang");
             return;

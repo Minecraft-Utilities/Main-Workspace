@@ -164,6 +164,12 @@ mc-utils:
   webhooks:
     new_cape_discovered: webhook_url_here
 
+  # Mojang endpoints; override to point at a stub for benchmarking.
+  mojang:
+    session-server-url: https://sessionserver.mojang.com
+    api-url: https://api.mojang.com
+    textures-url: https://textures.minecraft.net
+
   # Background player refresh (Mojang session server profile lookups).
   player-refresh:
     chunk-size: 5000
