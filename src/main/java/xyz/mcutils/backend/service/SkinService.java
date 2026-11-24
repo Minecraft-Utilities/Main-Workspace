@@ -228,7 +228,7 @@ public class SkinService {
         Pageable pageable = PageRequest.of(page - 1, SKINS_PER_PAGE, pageSort);
         Pagination<Skin> pagination = new Pagination<Skin>().setItemsPerPage(SKINS_PER_PAGE).setTotalItems(this.statisticsService.getTrackedSkinCount());
         return pagination.getPage(page, (_) ->
-            this.skinRepository.findAllSkins(pageable).map(Skin::fromRow).stream().toList()
+            this.skinRepository.findAllSkins(pageable).stream().map(Skin::fromRow).toList()
         );
     }
 
