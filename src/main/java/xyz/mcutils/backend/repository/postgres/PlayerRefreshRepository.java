@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -106,6 +107,21 @@ public class PlayerRefreshRepository {
                         rs.getObject("last_updated", OffsetDateTime.class).toInstant(),
                         rs.getLong("monthly_views")))
                 .list();
+    }
+
+    public record PlayerStats(Instant lastUpdated, long monthlyViews) {}
+
+    /** Both profile counters in one round trip; empty when the player has no refresh state. */
+    public Optional<PlayerStats> loadStats(UUID playerId) {
+        return this.jdbc.sql("""
+                        SELECT s.last_updated, COALESCE(v.views, 0) AS views
+                        FROM player_refresh_state s
+                        LEFT JOIN player_monthly_views v ON v.player_id = s.player_id
+                        WHERE s.player_id = :id
+                        """)
+                .param("id", playerId)
+                .query((rs, row) -> new PlayerStats(rs.getObject("last_updated", OffsetDateTime.class).toInstant(), rs.getLong("views")))
+                .optional();
     }
 
     private List<String> selectIds(String sql, OffsetDateTime now, int limit) {

@@ -2,6 +2,7 @@ package xyz.mcutils.backend.repository.postgres;
 
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,7 +15,18 @@ import xyz.mcutils.backend.model.persistence.postgres.SkinRow;
 import java.util.*;
 
 public interface PlayerRepository extends JpaRepository<PlayerRow, UUID> {
-    Optional<PlayerRow> findByUsernameIgnoreCase(String username);
+    @Query("SELECT p.id FROM PlayerRow p WHERE UPPER(p.username) = UPPER(:username)")
+    Optional<UUID> findIdByUsernameIgnoreCase(@Param("username") String username);
+
+    /** Resolves the id first: a joined username predicate makes the planner pick a parallel plan that costs far more than two index lookups. */
+    default Optional<PlayerRow> findByUsernameIgnoreCase(String username) {
+        return findIdByUsernameIgnoreCase(username).flatMap(this::findById);
+    }
+
+    @Override
+    @EntityGraph(attributePaths = {"skin", "cape"})
+    Optional<PlayerRow> findById(UUID id);
+
 
     /**
      * Case-insensitive prefix search, written as a byte-order range so the {@code text_pattern_ops} index serves it

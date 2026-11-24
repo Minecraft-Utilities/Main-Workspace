@@ -352,8 +352,9 @@ public class PlayerService {
         return this.playerMonthlyViewsRepository.findById(playerId).map(PlayerMonthlyViewsRow::getViews).orElse(0L);
     }
 
-    public PlayerRefreshStateRow getRefreshState(UUID playerId) {
-        return this.playerRefreshStateRepository.findById(playerId)
+    @Transactional(readOnly = true)
+    public PlayerRefreshRepository.PlayerStats getPlayerStats(UUID playerId) {
+        return this.playerRefreshRepository.loadStats(playerId)
                 .orElseThrow(() -> new IllegalStateException("Player %s has no refresh state".formatted(playerId)));
     }
 
