@@ -24,26 +24,33 @@ import java.util.UUID;
  */
 @Repository
 public class PlayerRefreshRepository {
-    private static final String SELECT_DUE_IDS = """
-            SELECT player_id FROM player_refresh_state
-            WHERE next_refresh_at < :now AND %s
+    private static final String SELECT_DUE_VIEWED = """
+            SELECT s.player_id FROM player_monthly_views v
+            JOIN player_refresh_state s ON s.player_id = v.player_id
+            WHERE s.next_refresh_at < :now
+            ORDER BY v.views DESC, s.next_refresh_at ASC
+            LIMIT :limit
+            """;
+    private static final String SELECT_DUE_BY_VELOCITY = """
+            SELECT s.player_id FROM player_refresh_state s
+            WHERE s.next_refresh_at < :now AND %s
+              AND NOT EXISTS (SELECT 1 FROM player_monthly_views v WHERE v.player_id = s.player_id)
             ORDER BY %s
             LIMIT :limit
             """;
-    private static final String SELECT_DUE_HOT = SELECT_DUE_IDS.formatted(
-            "(change_velocity >= 0.5 OR monthly_views > 0)",
-            "change_velocity DESC, monthly_views DESC, next_refresh_at ASC");
-    private static final String SELECT_DUE_COLD = SELECT_DUE_IDS.formatted(
-            "(change_velocity < 0.5 AND monthly_views = 0)",
-            "next_refresh_at ASC");
+    private static final String SELECT_DUE_HOT = SELECT_DUE_BY_VELOCITY.formatted(
+            "s.change_velocity >= 0.5", "s.change_velocity DESC, s.next_refresh_at ASC");
+    private static final String SELECT_DUE_COLD = SELECT_DUE_BY_VELOCITY.formatted(
+            "s.change_velocity < 0.5", "s.next_refresh_at ASC");
 
     private static final String LOAD_DUE = """
-            SELECT s.player_id, s.change_velocity, s.last_updated, s.monthly_views,
+            SELECT s.player_id, s.change_velocity, s.last_updated, COALESCE(v.views, 0) AS monthly_views,
                    p.username, p.legacy_account, sk.texture_id AS skin_texture_id, c.texture_id AS cape_texture_id
             FROM player_refresh_state s
             JOIN players p ON p.id = s.player_id
             JOIN skins sk ON sk.id = p.skin_id
             LEFT JOIN capes c ON c.id = p.cape_id
+            LEFT JOIN player_monthly_views v ON v.player_id = s.player_id
             WHERE s.player_id = ANY(:ids::uuid[])
             """;
 
@@ -70,16 +77,18 @@ public class PlayerRefreshRepository {
     public record ScheduleUpdate(UUID playerId, Instant nextRefreshAt, double changeVelocity, Instant lastUpdated) {}
 
     /**
-     * Selects up to {@code limit} due players, hot tier first, without writing anything: a claim
+     * Selects up to {@code limit} due players (viewed, then velocity-hot, then cold) without writing anything: a claim
      * that rewrote every row would double the index and WAL traffic of the refresh itself.
      * Callers must give every returned player a new schedule (success or failure backoff).
      */
     @Transactional(readOnly = true)
     public List<DuePlayer> claimDue(Instant now, int limit) {
         OffsetDateTime cutoff = OffsetDateTime.ofInstant(now, ZoneOffset.UTC);
-        List<String> ids = new ArrayList<>(selectIds(SELECT_DUE_HOT, cutoff, limit));
-        if (ids.size() < limit) {
-            ids.addAll(selectIds(SELECT_DUE_COLD, cutoff, limit - ids.size()));
+        List<String> ids = new ArrayList<>(selectIds(SELECT_DUE_VIEWED, cutoff, limit));
+        for (String tier : List.of(SELECT_DUE_HOT, SELECT_DUE_COLD)) {
+            if (ids.size() < limit) {
+                ids.addAll(selectIds(tier, cutoff, limit - ids.size()));
+            }
         }
         if (ids.isEmpty()) {
             return List.of();

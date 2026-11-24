@@ -10,7 +10,7 @@ import xyz.mcutils.backend.model.dto.request.PlayerViewRequest;
 import xyz.mcutils.backend.model.persistence.postgres.PlayerRow;
 import xyz.mcutils.backend.model.persistence.postgres.PlayerViewEventRow;
 import xyz.mcutils.backend.model.token.turnstile.TurnstileResponse;
-import xyz.mcutils.backend.repository.postgres.PlayerRepository;
+import xyz.mcutils.backend.repository.postgres.PlayerMonthlyViewsRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerViewEventRepository;
 
 import java.time.Instant;
@@ -28,22 +28,21 @@ public class PlayerViewService {
 
     private final PlayerService playerService;
     private final TurnstileService turnstileService;
-    private final PlayerRepository playerRepository;
+    private final PlayerMonthlyViewsRepository playerMonthlyViewsRepository;
     private final PlayerViewEventRepository playerViewEventRepository;
 
-    public PlayerViewService(PlayerService playerService, TurnstileService turnstileService, PlayerRepository playerRepository,
+    public PlayerViewService(PlayerService playerService, TurnstileService turnstileService, PlayerMonthlyViewsRepository playerMonthlyViewsRepository,
                              PlayerViewEventRepository playerViewEventRepository) {
         this.playerService = playerService;
         this.turnstileService = turnstileService;
-        this.playerRepository = playerRepository;
+        this.playerMonthlyViewsRepository = playerMonthlyViewsRepository;
         this.playerViewEventRepository = playerViewEventRepository;
     }
 
     @Scheduled(cron = "0 0 * * * *") // Every hour
-    public void updateTrendingHeat() {
+    public void rebuildMonthlyViews() {
         long before = System.currentTimeMillis();
-        this.playerRepository.resetMonthlyViews();
-        this.playerRepository.updateMonthlyViews();
+        this.playerMonthlyViewsRepository.rebuild();
         log.info("Updated monthly views for players in {}ms", System.currentTimeMillis() - before);
     }
 

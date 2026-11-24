@@ -29,6 +29,7 @@ import xyz.mcutils.backend.model.persistence.postgres.SkinRow;
 import xyz.mcutils.backend.model.token.mojang.SkinTextureToken;
 import xyz.mcutils.backend.repository.postgres.PlayerRepository;
 import xyz.mcutils.backend.repository.postgres.SkinRepository;
+import xyz.mcutils.backend.repository.postgres.SkinTrendingRepository;
 
 import java.awt.image.BufferedImage;
 import java.time.Instant;
@@ -45,6 +46,7 @@ public class SkinService {
     public static SkinService INSTANCE;
 
     private final SkinRepository skinRepository;
+    private final SkinTrendingRepository skinTrendingRepository;
     private final PlayerRepository playerRepository;
     private final StorageService storageService;
     private final StatisticsService statisticsService;
@@ -83,11 +85,12 @@ public class SkinService {
     @Value("${mc-utils.renderer.skin.limits.max_size}")
     private int maxPartSize;
 
-    public SkinService(SkinRepository skinRepository, PlayerRepository playerRepository,
+    public SkinService(SkinRepository skinRepository, SkinTrendingRepository skinTrendingRepository, PlayerRepository playerRepository,
                        StorageService storageService, WebRequest webRequest, StatisticsService statisticsService,
                        PlatformTransactionManager transactionManager,
                        @Lazy LegacySkinCheckService legacySkinCheckService) {
         this.skinRepository = skinRepository;
+        this.skinTrendingRepository = skinTrendingRepository;
         this.playerRepository = playerRepository;
         this.storageService = storageService;
         this.webRequest = webRequest;
@@ -104,7 +107,7 @@ public class SkinService {
     @Scheduled(cron = "0 0 * * * *") // Every hour
     public void updateTrendingHeat() {
         long before = System.currentTimeMillis();
-        this.skinRepository.rebuildTrendingHeat(VanillaSkinTextureIds.ALL);
+        this.skinTrendingRepository.rebuild(VanillaSkinTextureIds.ALL);
         this.statisticsService.refreshTrendingSkinCount();
         log.info("Updated trending heat for skins in {}ms ({} trending)", System.currentTimeMillis() - before, this.statisticsService.getTrendingSkinCount());
     }
@@ -194,7 +197,7 @@ public class SkinService {
             Skin.Model model = token.metadata() == null
                     ? Skin.Model.DEFAULT
                     : Skin.Model.valueOf(token.metadata().model().toUpperCase());
-            SkinRow row = new SkinRow(textureId, model, false, 0, 0, Instant.now());
+            SkinRow row = new SkinRow(textureId, model, false, 0, Instant.now());
             row.setFirstSeenUsingPlayerId(playerId);
             SkinRow saved = this.skinRepository.save(row);
             StatisticsService.addTrackedSkinCount(1);
@@ -204,16 +207,16 @@ public class SkinService {
     }
 
     public Pagination.Page<Skin> getPaginatedSkins(int page, SkinLookupSort sort) {
-        Sort pageSort = Sort.by(Sort.Direction.DESC, sort.getFieldName()).and(Sort.by(Sort.Direction.ASC, "id"));
-        Pageable pageable = PageRequest.of(page - 1, SKINS_PER_PAGE, pageSort);
-
         if (sort == SkinLookupSort.TRENDING) {
+            Pageable trendingPage = PageRequest.of(page - 1, SKINS_PER_PAGE);
             Pagination<Skin> pagination = new Pagination<Skin>().setItemsPerPage(SKINS_PER_PAGE).setTotalItems(this.statisticsService.getTrendingSkinCount());
             return pagination.getPage(page, (_) ->
-                this.skinRepository.findTrendingSkins(VanillaSkinTextureIds.ALL, pageable).map(Skin::fromRow).stream().toList()
+                this.skinRepository.findTrendingSkins(trendingPage).map(Skin::fromRow).stream().toList()
             );
         }
 
+        Sort pageSort = Sort.by(Sort.Direction.DESC, sort.getFieldName()).and(Sort.by(Sort.Direction.ASC, "id"));
+        Pageable pageable = PageRequest.of(page - 1, SKINS_PER_PAGE, pageSort);
         Pagination<Skin> pagination = new Pagination<Skin>().setItemsPerPage(SKINS_PER_PAGE).setTotalItems(this.statisticsService.getTrackedSkinCount());
         return pagination.getPage(page, (_) ->
             this.skinRepository.findAllSkins(pageable).map(Skin::fromRow).stream().toList()

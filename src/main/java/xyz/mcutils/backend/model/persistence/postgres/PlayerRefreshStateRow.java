@@ -31,7 +31,4 @@ public class PlayerRefreshStateRow {
 
     @Column(nullable = false, name = "last_updated")
     private Instant lastUpdated;
-
-    @Column(nullable = false, name = "monthly_views")
-    private long monthlyViews;
 }

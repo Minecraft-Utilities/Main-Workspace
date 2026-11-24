@@ -5,11 +5,11 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import xyz.mcutils.backend.Main;
-import xyz.mcutils.backend.model.domain.skin.VanillaSkinTextureIds;
 import xyz.mcutils.backend.model.dto.response.StatisticsResponse;
 import xyz.mcutils.backend.repository.postgres.CapeRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRepository;
 import xyz.mcutils.backend.repository.postgres.SkinRepository;
+import xyz.mcutils.backend.repository.postgres.SkinTrendingRepository;
 import xyz.mcutils.backend.repository.postgres.UsernameChangeEventRepository;
 import xyz.mcutils.backend.websocket.WebSocketManager;
 import xyz.mcutils.backend.websocket.impl.StatisticsWebSocket;
@@ -25,6 +25,7 @@ public class StatisticsService {
 
     private final PlayerRepository playerRepository;
     private final SkinRepository skinRepository;
+    private final SkinTrendingRepository skinTrendingRepository;
     private final CapeRepository capeRepository;
     private final UsernameChangeEventRepository usernameChangeEventRepository;
 
@@ -54,9 +55,10 @@ public class StatisticsService {
         return this.nameChangesCount.get();
     }
 
-    public StatisticsService(PlayerRepository playerRepository, SkinRepository skinRepository, CapeRepository capeRepository, UsernameChangeEventRepository usernameChangeEventRepository) {
+    public StatisticsService(PlayerRepository playerRepository, SkinRepository skinRepository, SkinTrendingRepository skinTrendingRepository, CapeRepository capeRepository, UsernameChangeEventRepository usernameChangeEventRepository) {
         this.playerRepository = playerRepository;
         this.skinRepository = skinRepository;
+        this.skinTrendingRepository = skinTrendingRepository;
         this.capeRepository = capeRepository;
         this.usernameChangeEventRepository = usernameChangeEventRepository;
         INSTANCE = this;
@@ -115,18 +117,18 @@ public class StatisticsService {
                 .thenAccept(this.trackedSkinCount::set);
         CompletableFuture.supplyAsync(this.capeRepository::count, Main.EXECUTOR)
                 .thenAccept(this.trackedCapeCount::set);
-        CompletableFuture.supplyAsync(() -> this.skinRepository.countTrendingSkins(VanillaSkinTextureIds.ALL), Main.EXECUTOR)
+        CompletableFuture.supplyAsync(this.skinTrendingRepository::count, Main.EXECUTOR)
                 .thenAccept(this.trendingSkinCount::set);
         CompletableFuture.supplyAsync(this.usernameChangeEventRepository::countNameChanges, Main.EXECUTOR)
                 .thenAccept(this.nameChangesCount::set);
     }
 
     /**
-     * Refreshes the cached count of skins with {@code trending_heat > 0}.
+     * Refreshes the cached count of trending skins.
      * Called after the hourly trending-heat rebuild; avoids a per-request COUNT over ~90k+ rows.
      */
     public void refreshTrendingSkinCount() {
-        this.trendingSkinCount.set(this.skinRepository.countTrendingSkins(VanillaSkinTextureIds.ALL));
+        this.trendingSkinCount.set(this.skinTrendingRepository.count());
     }
 
     /**

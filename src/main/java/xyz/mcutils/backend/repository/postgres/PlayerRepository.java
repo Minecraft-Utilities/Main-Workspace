@@ -47,33 +47,4 @@ public interface PlayerRepository extends JpaRepository<PlayerRow, UUID> {
     @Transactional
     @Query("UPDATE PlayerRow p SET p.submittedUuids = p.submittedUuids + :count WHERE p.id = :id")
     void incrementSubmittedUuids(@Param("id") UUID id, @Param("count") long count);
-
-    @Modifying
-    @Transactional
-    @Query(nativeQuery = true, value = """
-        UPDATE player_refresh_state
-        SET monthly_views = 0
-        WHERE monthly_views > 0
-        AND player_id NOT IN (
-            SELECT DISTINCT player_id FROM player_view_events
-            WHERE viewed_at >= NOW() - INTERVAL '30 days'
-        );
-    """)
-    void resetMonthlyViews();
-
-    @Modifying
-    @Transactional
-    @Query(nativeQuery = true, value = """
-        UPDATE player_refresh_state
-         SET monthly_views = subquery.monthly_views
-         FROM (
-             SELECT player_id, COUNT(*) AS monthly_views
-             FROM player_view_events
-             WHERE viewed_at >= NOW() - INTERVAL '30 days'
-             GROUP BY player_id
-         ) AS subquery
-         WHERE player_refresh_state.player_id = subquery.player_id
-         AND player_refresh_state.monthly_views != subquery.monthly_views;
-    """)
-    void updateMonthlyViews();
 }

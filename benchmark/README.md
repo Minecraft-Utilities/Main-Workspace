@@ -14,3 +14,14 @@ Mojang stub, so the backend can be benchmarked without touching prod or Mojang.
 Databases: `mcutils_bench_seed` is pristine and must never be run against. `mcutils_bench` is the throwaway working copy
 (cloning takes about 2 minutes). Build the jar with
 `docker run --rm -v "$PWD":/build -v ~/.m2/repository:/root/.m2/repository -w /build maven:3.9.15-eclipse-temurin-25-alpine mvn -q -DskipTests package`.
+
+## Hourly jobs (`sql/`)
+
+The SQL scripts replay the hourly rebuilds against a clone (`mcutils_bench`) of the migrated seed
+(`SEED_DB=mcutils_bench_seed_v53`), outside the app, so timing and WAL are the statement alone.
+
+- `views-scenario.sql -v viewers=N -v stale=M` builds N viewers in the 30-day window plus M stale rows, then
+  `views-job.sql` runs `PlayerMonthlyViewsRepository.rebuild` (run it twice: cold, then steady state).
+- `skins-job.sql -v window='<interval>'` runs `SkinTrendingRepository.rebuild`; `skins-job-old.sql` is the
+  pre-`skin_trending` query for comparison on the original seed. The seed puts 15M adoptions in the last 7
+  days, ~5000x prod, so size the window to a row count instead (prod: ~3.2k adoptions per 7 days).

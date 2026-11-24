@@ -54,7 +54,7 @@ public class FullPlayer extends BasicPlayer {
                 .firstSeen(playerRow.getFirstSeen())
                 .legacyAccount(playerRow.isLegacyAccount())
                 .submittedUuids(playerRow.getSubmittedUuids())
-                .monthlyViews(refreshState.getMonthlyViews())
+                .monthlyViews(playerService.getMonthlyViews(playerRow.getId()))
                 .skinHistory(playerService.getSkinHistory(playerRow))
                 .capeHistory(playerService.getCapeHistory(playerRow))
                 .usernameHistory(playerService.getUsernameHistory(playerRow))

@@ -1,0 +1,31 @@
+== refresh benchmark 20261124-062423 (180s, args: )
+{
+ "refreshed_per_s": 1277.8,
+ "persisted": 230000,
+ "fetched": 220000,
+ "peak_per_s": 2000.0,
+ "zero_windows": 0,
+ "wal_bytes_per_player": 12501,
+ "wal_records_per_player": 5.41,
+ "wal_fpi_per_player": 1.688,
+ "wal_mb": 2875.3,
+ "row_updates_per_player": 1.05,
+ "hot_update_pct": 1.9,
+ "db_ms_per_player": 0.841,
+ "sql_calls_per_player": 0.31,
+ "block_reads_per_player": 5.16,
+ "cache_hit_pct": 95.58
+}
+rate per 5s window: 179 1283 1538 1000 2000 1000 1000 1000 1000 1000 1000 1000 2000 1000 2000 2000 1000 2000 1000 2000 1000 1000 1000 1000 2000 2000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000
+-- failures: 0 persist failures, 46 chunks
+-- top SQL by total time
+46 | 129453 | 2814.19 | SELECT s.player_id, s.change_velocity, s.last_updated, COALESCE(v.views, $2) AS monthly_views, p.use
+46 | 39651 | 861.97 | SELECT s.player_id FROM player_refresh_state s WHERE s.next_refresh_at < $1 AND s.change_velocity >=
+5820 | 6495 | 1.12 | update players set cape_id=$1,first_seen=$2,legacy_account=$3,skin_id=$4,submitted_uuids=$5,username
+5866 | 5496 | 0.94 | UPDATE player_refresh_state s SET next_refresh_at = to_timestamp(v.next / $5), change_velocity = v.v
+4696 | 3129 | 0.67 | select sr1_0.id,sr1_0.first_seen,sr1_0.first_seen_using_player_id,sr1_0.legacy,sr1_0.model,sr1_0.tex
+9392 | 2300 | 0.24 | select psar1_0.player_id,psar1_0.skin_id,psar1_0.first_seen,psar1_0.last_equipped_at from player_ski
+1 | 1793 | 1792.61 | select count(*) from skins sr1_0
+1 | 1752 | 1752.30 | select count(*) from players pr1_0
+4696 | 1232 | 0.26 | insert into player_skin_adoptions (first_seen,last_equipped_at,player_id,skin_id) values ($1,$2,$3,$
+5820 | 358 | 0.06 | select pr1_0.id,pr1_0.cape_id,pr1_0.first_seen,pr1_0.legacy_account,pr1_0.skin_id,pr1_0.submitted_uu

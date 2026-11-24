@@ -30,6 +30,7 @@ import xyz.mcutils.backend.repository.postgres.PlayerCapeAdoptionRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.DuePlayer;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.ScheduleUpdate;
+import xyz.mcutils.backend.repository.postgres.PlayerMonthlyViewsRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshStateRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerSkinAdoptionRepository;
@@ -68,6 +69,7 @@ public class PlayerService {
     private final PlayerCapeAdoptionRepository playerCapeAdoptionRepository;
     private final PlayerRefreshRepository playerRefreshRepository;
     private final PlayerRefreshStateRepository playerRefreshStateRepository;
+    private final PlayerMonthlyViewsRepository playerMonthlyViewsRepository;
     private final PlayerService self;
 
     private final CoalescingLoader<String, PlayerRow> playerLoader = new CoalescingLoader<>(Runnable::run);
@@ -76,6 +78,7 @@ public class PlayerService {
                          PlayerRepository playerRepository, UsernameChangeEventRepository usernameChangeEventRepository,
                          PlayerSkinAdoptionRepository playerSkinAdoptionRepository, PlayerCapeAdoptionRepository playerCapeAdoptionRepository,
                          PlayerRefreshRepository playerRefreshRepository, PlayerRefreshStateRepository playerRefreshStateRepository,
+                         PlayerMonthlyViewsRepository playerMonthlyViewsRepository,
                          @Lazy PlayerService self,
                          @Value("${mc-utils.player-refresh.concurrent-persists:64}") int concurrentPersists) {
         this.mojangService = mojangService;
@@ -88,6 +91,7 @@ public class PlayerService {
         this.playerCapeAdoptionRepository = playerCapeAdoptionRepository;
         this.playerRefreshRepository = playerRefreshRepository;
         this.playerRefreshStateRepository = playerRefreshStateRepository;
+        this.playerMonthlyViewsRepository = playerMonthlyViewsRepository;
         this.self = self;
         this.persistSemaphore = new Semaphore(concurrentPersists);
     }
@@ -126,7 +130,8 @@ public class PlayerService {
             // The shared limiter keeps this path inside the same Mojang budget as the background
             // refresh and submit queue.
             PlayerRefreshStateRow refreshState = this.playerRefreshStateRepository.findById(playerRow.getId()).orElse(null);
-            if (refreshState != null && refreshState.getNextRefreshAt().isBefore(Instant.now()) && refreshState.getMonthlyViews() > 0) {
+            if (refreshState != null && refreshState.getNextRefreshAt().isBefore(Instant.now())
+                    && this.playerMonthlyViewsRepository.existsById(playerRow.getId())) {
                 Main.EXECUTOR.execute(() -> {
                     try {
                         this.mojangRateLimiter.acquire();
@@ -181,7 +186,7 @@ public class PlayerService {
                 cape,
                 now
         ));
-        this.playerRefreshStateRepository.save(new PlayerRefreshStateRow(id, nextRefreshAt, 0, now, 0));
+        this.playerRefreshStateRepository.save(new PlayerRefreshStateRow(id, nextRefreshAt, 0, now));
 
         this.playerSkinAdoptionRepository.save(new PlayerSkinAdoptionRow(id, skin.getId(), now, null));
         if (cape != null) {
@@ -258,7 +263,7 @@ public class PlayerService {
             }
             playerRows.add(new PlayerRow(id, token.getName(), token.getLegacy() != null && token.getLegacy(),
                     0, skin, cape, now));
-            refreshStates.add(new PlayerRefreshStateRow(id, now.plus(PlayerRefreshSchedule.BASE_INTERVAL), 0, now, 0));
+            refreshStates.add(new PlayerRefreshStateRow(id, now.plus(PlayerRefreshSchedule.BASE_INTERVAL), 0, now));
         }
 
         if (playerRows.isEmpty()) {
@@ -335,11 +340,15 @@ public class PlayerService {
                 cape != null ? cape.getTextureId() : null,
                 refreshState.getChangeVelocity(),
                 refreshState.getLastUpdated(),
-                refreshState.getMonthlyViews()
+                this.getMonthlyViews(playerRow.getId())
         );
         List<ScheduleUpdate> unchanged = new ArrayList<>(1);
         this.persistPlayerRefresh(new PlayerUpdate(player, token), unchanged);
         this.persistUnchangedRefreshes(unchanged);
+    }
+
+    public long getMonthlyViews(UUID playerId) {
+        return this.playerMonthlyViewsRepository.findById(playerId).map(PlayerMonthlyViewsRow::getViews).orElse(0L);
     }
 
     public PlayerRefreshStateRow getRefreshState(UUID playerId) {

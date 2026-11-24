@@ -35,21 +35,17 @@ public class SkinRow {
     @Column(nullable = false, name = "unique_owners")
     private long uniqueOwners;
 
-    @Column(nullable = false, name = "trending_heat")
-    private int trendingHeat;
-
     @Column(nullable = false, name = "first_seen")
     private Instant firstSeen;
 
     @Column(name = "first_seen_using_player_id")
     private UUID firstSeenUsingPlayerId;
 
-    public SkinRow(String textureId, Skin.Model model, boolean legacy, long uniqueOwners, int trendingHeat, Instant firstSeen) {
+    public SkinRow(String textureId, Skin.Model model, boolean legacy, long uniqueOwners, Instant firstSeen) {
         this.textureId = textureId;
         this.model = model;
         this.legacy = legacy;
         this.uniqueOwners = uniqueOwners;
-        this.trendingHeat = trendingHeat;
         this.firstSeen = firstSeen;
     }
 }
