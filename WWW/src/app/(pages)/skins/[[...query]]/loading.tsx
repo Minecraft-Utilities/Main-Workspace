@@ -12,7 +12,6 @@ export default function SkinsLoading() {
     >
       <header className="w-full max-w-[980px]">
         <h1 className="text-foreground text-4xl font-bold tracking-tight">Minecraft Skins</h1>
-        <p className="text-muted-foreground mt-2 text-sm">Discover thousands of Minecraft skins</p>
       </header>
 
       <div className="w-full max-w-[980px]">

@@ -53,9 +53,6 @@ export default async function CapePage({ params }: PageProps<"/cape/[query]">) {
     <div className="mt-10 flex w-full flex-col items-center justify-center gap-10">
       <header className="w-full max-w-[980px] text-left">
         <h1 className="text-foreground text-4xl font-bold tracking-tight">{cape.name ?? "Unknown"} Cape</h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Preview the cape design, explore details, and see who wears it.
-        </p>
       </header>
 
       <div className="flex w-full max-w-[980px] flex-col gap-4 lg:flex-row">

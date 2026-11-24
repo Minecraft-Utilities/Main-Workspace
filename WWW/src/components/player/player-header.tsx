@@ -19,7 +19,6 @@ export default function PlayerHeader({ player }: PlayerHeaderProps) {
         />
         <div className="min-w-0">
           <h1 className="text-foreground text-4xl font-bold tracking-tight">{player.username}</h1>
-          <p className="text-muted-foreground mt-2 text-sm">Skin, capes, and profile history.</p>
         </div>
       </div>
     </header>

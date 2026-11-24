@@ -56,9 +56,6 @@ export default async function HomePage() {
           <h1 className="text-foreground text-3xl font-semibold tracking-tight sm:text-4xl">
             Minecraft Player & Server Lookup
           </h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            Look up any player by Username / UUID or inspect any server by hostname.
-          </p>
         </header>
 
         <div className="flex w-full flex-col items-center gap-20">

@@ -62,9 +62,6 @@ export default async function SkinsPage({ params }: PageProps<"/skin/[query]">) 
             <SimpleLink href={`/player/${skin.firstSeenUsing}`}>{skin.firstSeenUsing}'s Skin</SimpleLink>
           </span>
         </h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Preview the full skin, download it, and see which players have worn it.
-        </p>
       </header>
 
       <div className="flex w-full max-w-[980px] flex-col gap-4 lg:flex-row">

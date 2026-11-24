@@ -9,9 +9,6 @@ export default function CapesLoading() {
     >
       <header className="w-full max-w-[980px]">
         <h1 className="text-foreground text-4xl font-bold tracking-tight">Minecraft Capes</h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          A list of all official Minecraft capes and which players own and have used them
-        </p>
       </header>
 
       <div className="w-full max-w-[980px]">
