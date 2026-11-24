@@ -35,10 +35,10 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Braydon
@@ -47,7 +47,7 @@ import java.util.concurrent.CompletionException;
 @Slf4j
 public class MaxMindService {
     private static final String DATABASE_DOWNLOAD_ENDPOINT = "https://download.maxmind.com/app/geoip_download?edition_id=%s&license_key=%s&suffix=tar.gz";
-    private static final Map<Database, DatabaseReader> DATABASES = new HashMap<>();
+    private static final Map<Database, DatabaseReader> DATABASES = new ConcurrentHashMap<>();
     public static MaxMindService INSTANCE;
     @Value("${mc-utils.maxmind.license}")
     private String license;
@@ -226,15 +226,6 @@ public class MaxMindService {
                 loadedCount++;
             }
 
-            // Close existing reader before update so we can overwrite the file
-            if (needsUpdate) {
-                DatabaseReader existing = DATABASES.get(database);
-                if (existing != null) {
-                    existing.close();
-                    DATABASES.remove(database);
-                }
-            }
-
             // Download only when missing, or when we need an update (download to temp, then replace)
             if (!databaseFile.exists() || needsUpdate) {
                 boolean downloaded = downloadDatabase(database, databaseFile, databasesDir);
@@ -257,14 +248,11 @@ public class MaxMindService {
                 continue;
             }
 
-            // Close existing reader before loading new file (e.g. after update)
-            DatabaseReader existingReader = DATABASES.get(database);
-            if (existingReader != null) {
-                existingReader.close();
-                DATABASES.remove(database);
+            // Swap only after the new reader is built so lookups never see a missing database.
+            DatabaseReader previous = DATABASES.put(database, new DatabaseReader.Builder(databaseFile).withCache(new CHMCache()).build());
+            if (previous != null) {
+                previous.close();
             }
-
-            DATABASES.put(database, new DatabaseReader.Builder(databaseFile).withCache(new CHMCache()).build());
             log.info("Successfully loaded database: {}", database.getEdition());
         }
 
@@ -292,6 +280,8 @@ public class MaxMindService {
             try {
                 URL url = URI.create(DATABASE_DOWNLOAD_ENDPOINT.formatted(database.getEdition(), license)).toURL();
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(10_000);
+                conn.setReadTimeout(60_000);
                 int code = conn.getResponseCode();
                 if (code != HttpURLConnection.HTTP_OK) {
                     log.warn("MaxMind returned HTTP {} for {} ({}); skipping download", code, database.getEdition(), code == 429 ? "rate limited" : "check MaxMind status");
