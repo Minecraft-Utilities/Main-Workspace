@@ -29,3 +29,5 @@ The SQL scripts replay the hourly rebuilds against a clone (`mcutils_bench`) of 
   new skin adoptions (each fires the `unique_owners` trigger) and rolls back, reporting time and WAL. Set
   `SETUP="SET LOCAL wal_compression = zstd;"` to test compression. The first run on a freshly migrated clone pays
   extra hint-bit full-page images; discard it. Time is I/O noise, WAL is stable.
+- `views-write.sql` replays the per-view write path (dedupe lookup, insert, trigger upsert); `views-prune.sql`
+  replays the hourly `deleteViewedBefore`. Seed the events first with `views-scenario.sql`.

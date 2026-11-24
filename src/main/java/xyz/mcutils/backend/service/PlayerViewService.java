@@ -13,8 +13,8 @@ import xyz.mcutils.backend.model.token.turnstile.TurnstileResponse;
 import xyz.mcutils.backend.repository.postgres.PlayerMonthlyViewsRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerViewEventRepository;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 
 @Service
 @Slf4j
@@ -25,6 +25,8 @@ public class PlayerViewService {
 
     @Value("${mc-utils.player-views.ip-salt}")
     public String ipSalt;
+
+    private static final Duration VIEW_WINDOW = Duration.ofDays(30);
 
     private final PlayerService playerService;
     private final TurnstileService turnstileService;
@@ -43,7 +45,8 @@ public class PlayerViewService {
     public void rebuildMonthlyViews() {
         long before = System.currentTimeMillis();
         this.playerMonthlyViewsRepository.rebuild();
-        log.info("Updated monthly views for players in {}ms", System.currentTimeMillis() - before);
+        int pruned = this.playerViewEventRepository.deleteViewedBefore(Instant.now().minus(VIEW_WINDOW));
+        log.info("Updated monthly views for players in {}ms (pruned {} expired events)", System.currentTimeMillis() - before, pruned);
     }
 
     public void countView(PlayerViewRequest request, String ip) {
@@ -58,7 +61,7 @@ public class PlayerViewService {
         }
         PlayerRow player = this.playerService.getPlayer(request.playerQuery());
         boolean alreadyViewed = playerViewEventRepository.existsByPlayerIdAndIpAddressAndViewedAtAfter(player.getId(), ipHash,
-                Instant.now().minus(30, ChronoUnit.DAYS));
+                Instant.now().minus(VIEW_WINDOW));
         if (!alreadyViewed) {
             this.playerViewEventRepository.save(new PlayerViewEventRow(player.getId(), ipHash, Instant.now()));
         }
