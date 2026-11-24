@@ -536,7 +536,7 @@ public class PlayerService {
     }
 
     public List<PlayerRow> searchPlayers(String query) {
-        return this.playerRepository.findByUsernameStartingWithIgnoreCase(query, Pageable.ofSize(MAX_PLAYER_SEARCH_RESULTS));
+        return this.playerRepository.searchByUsernamePrefix(query, MAX_PLAYER_SEARCH_RESULTS);
     }
 
     public List<PlayerRow> getTopSubmittedPlayers(int amount) {

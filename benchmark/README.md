@@ -10,6 +10,7 @@ Mojang stub, so the backend can be benchmarked without touching prod or Mojang.
 | `stub/mojang-stub.ts` | Bun server: session server, textures and blocked-servers stub on `:9200`. Options: `--latency-ms`, `--error-rate`, `--rename-rate`, `--skin-rate`, `--cape-rate`. |
 | `run-app.sh [db] [-Dprop=val...]` | Runs `target/Minecraft-Utilities.jar` against the bench infra. Overrides must be `-D` properties: program arguments switch `Main` to no web server and the JVM exits after about a minute. |
 | `bench-submit.sh [players=20000]` | Clones `mcutils_bench_seed_idle` (migrated seed with every `next_refresh_at` 10 years out, so the refresh loop stays idle), pushes new players into the submit queue (Redis db 1) and times the consumer until they are all in `players`. Prints throughput, WAL per player and top SQL. |
+| `bench-read.sh [secs=60] [concurrency=8]` | Clones the idle seed, starts the app and replays `read-mix.ts`: player by uuid/name/FULL, common and rare prefix search and recent name changes. Prints p50/p99 per class and top SQL. |
 | `bench-refresh.sh [secs] [-Dprop=val...]` | Re-clones `mcutils_bench` from the seed, runs the refresh loop, prints throughput per 5s window and top SQL. Saves to `results/`. |
 
 Databases: `mcutils_bench_seed` is pristine and must never be run against. `mcutils_bench` is the throwaway working copy

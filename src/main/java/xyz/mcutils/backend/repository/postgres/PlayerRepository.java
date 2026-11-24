@@ -15,7 +15,19 @@ import java.util.*;
 
 public interface PlayerRepository extends JpaRepository<PlayerRow, UUID> {
     Optional<PlayerRow> findByUsernameIgnoreCase(String username);
-    List<PlayerRow> findByUsernameStartingWithIgnoreCase(String username, Pageable pageable);
+
+    /**
+     * Case-insensitive prefix search, written as a byte-order range so the {@code text_pattern_ops} index serves it
+     * with a bind parameter. {@code chr(1114111)} is the highest code point, so the upper bound sits past every
+     * username that starts with the prefix.
+     */
+    @Query(value = """
+            SELECT * FROM players
+            WHERE upper(username) ~>=~ upper(:prefix) AND upper(username) ~<~ (upper(:prefix) || chr(1114111))
+            ORDER BY upper(username) USING ~<~
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<PlayerRow> searchByUsernamePrefix(@Param("prefix") String prefix, @Param("limit") int limit);
     List<PlayerRow> findAllByOrderBySubmittedUuidsDesc(Pageable pageable);
 
     @Query("SELECT p.username FROM PlayerRow p WHERE p.skin.id = :skinId")

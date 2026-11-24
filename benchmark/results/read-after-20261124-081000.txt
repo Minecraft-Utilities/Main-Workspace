@@ -1,0 +1,62 @@
+== read benchmark 20261124-081000 (60s, concurrency 8, args: )
+{
+ "seconds": 60,
+ "concurrency": 8,
+ "requests": 184098,
+ "rps": 3068.3,
+ "classes": {
+  "player by uuid": {
+   "n": 55212,
+   "p50": 0.9,
+   "p99": 7.4,
+   "max": 133.5,
+   "errors": 0
+  },
+  "player by name": {
+   "n": 55358,
+   "p50": 4.2,
+   "p99": 11.3,
+   "max": 151.9,
+   "errors": 0
+  },
+  "player full": {
+   "n": 27575,
+   "p50": 2.1,
+   "p99": 13.6,
+   "max": 152.7,
+   "errors": 0
+  },
+  "search common prefix": {
+   "n": 27520,
+   "p50": 1,
+   "p99": 3.1,
+   "max": 73.1,
+   "errors": 27520
+  },
+  "search rare prefix": {
+   "n": 9217,
+   "p50": 1,
+   "p99": 3.1,
+   "max": 59.6,
+   "errors": 9217
+  },
+  "recent name changes": {
+   "n": 9216,
+   "p50": 0.7,
+   "p99": 2.8,
+   "max": 122.6,
+   "errors": 0
+  }
+ }
+}
+-- top SQL by total time
+55357 | 155173 | 2.80 | select pr1_0.id,pr1_0.cape_id,pr1_0.first_seen,pr1_0.legacy_account,pr1_0.skin_id,pr1_0.submitted_uuids,pr1_0.
+82787 | 8844 | 0.11 | select pr1_0.id,c1_0.id,c1_0.first_seen,c1_0.first_seen_using_player_id,c1_0.name,c1_0.texture_id,c1_0.unique_
+138144 | 4836 | 0.04 | select prsr1_0.player_id,prsr1_0.change_velocity,prsr1_0.last_updated,prsr1_0.next_refresh_at from player_refr
+27575 | 3781 | 0.14 | select psar1_0.player_id,psar1_0.skin_id,psar1_0.first_seen,psar1_0.last_equipped_at,s1_0.id,s1_0.first_seen,s
+1 | 3155 | 3154.82 | select count(*) from players pr1_0
+1 | 3124 | 3124.23 | select count(*) from skins sr1_0
+55377 | 2340 | 0.04 | select sr1_0.id,sr1_0.first_seen,sr1_0.first_seen_using_player_id,sr1_0.legacy,sr1_0.model,sr1_0.texture_id,sr
+27575 | 1885 | 0.07 | select pcar1_0.cape_id,pcar1_0.player_id,c1_0.id,c1_0.first_seen,c1_0.first_seen_using_player_id,c1_0.name,c1_
+27575 | 911 | 0.03 | select ucer1_0.id,ucer1_0.new_username,ucer1_0.player_id,ucer1_0.previous_username,ucer1_0.timestamp from user
+9216 | 668 | 0.07 | select ucer1_0.id,ucer1_0.new_username,ucer1_0.player_id,ucer1_0.previous_username,ucer1_0.timestamp from user
