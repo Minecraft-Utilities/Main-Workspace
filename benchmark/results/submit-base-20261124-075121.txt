@@ -1,0 +1,26 @@
+== submit benchmark 20261124-075121 (20000 players, seed mcutils_bench_seed_idle, args: )
+{
+ "submitted": 20000,
+ "created": 20000,
+ "seconds": 67.2,
+ "players_per_s": 297.4,
+ "wal_bytes_per_player": 76929,
+ "wal_records_per_player": 21.0,
+ "wal_fpi_per_player": 11.43,
+ "wal_mb": 1538.6
+}
+-- top SQL by total time
+19989 | 27084 | 1.355 | 19540 | select sr1_0.id,sr1_0.first_seen,sr1_0.first_seen_using_player_id,sr1_0.legacy,sr1_0.model,sr1_0.texture_id,sr
+20000 | 18743 | 0.937 | 20000 | insert into players (cape_id,first_seen,legacy_account,skin_id,submitted_uuids,username,id) values ($1,$2,$3,$
+20000 | 7856 | 0.393 | 20000 | insert into player_skin_adoptions (first_seen,last_equipped_at,player_id,skin_id) values ($1,$2,$3,$4)
+42 | 5279 | 125.689 | 0 | select pr1_0.id from players pr1_0 where pr1_0.id in ($1 /*, ... */)
+20000 | 5032 | 0.252 | 0 | select psar1_0.player_id,psar1_0.skin_id,psar1_0.first_seen,psar1_0.last_equipped_at from player_skin_adoption
+20030 | 4687 | 0.234 | 20030 | select sr1_0.id,sr1_0.first_seen,sr1_0.first_seen_using_player_id,sr1_0.legacy,sr1_0.model,sr1_0.texture_id,sr
+20000 | 4611 | 0.231 | 0 | select prsr1_0.player_id,prsr1_0.change_velocity,prsr1_0.last_updated,prsr1_0.next_refresh_at from player_refr
+3 | 649 | 216.326 | 3 | SELECT count(*) FROM players WHERE first_seen > now() - interval $1 AND id IN (SELECT md5($2 || i)::uuid FROM 
+2810 | 649 | 0.231 | 0 | select pcar1_0.cape_id,pcar1_0.player_id,pcar1_0.first_seen,pcar1_0.last_equipped_at from player_cape_adoption
+20000 | 338 | 0.017 | 0 | select pr1_0.id,c1_0.id,c1_0.first_seen,c1_0.first_seen_using_player_id,c1_0.name,c1_0.texture_id,c1_0.unique_
+2810 | 257 | 0.091 | 2810 | insert into player_cape_adoptions (first_seen,last_equipped_at,cape_id,player_id) values ($1,$2,$3,$4)
+20000 | 213 | 0.011 | 20000 | insert into player_refresh_state (change_velocity,last_updated,next_refresh_at,player_id) values ($1,$2,$3,$4)
+7 | 62 | 8.868 | 0 | SELECT s.player_id FROM player_refresh_state s WHERE s.next_refresh_at < $1 AND s.change_velocity >= $3 AND NO
+449 | 56 | 0.125 | 449 | insert into skins (first_seen,first_seen_using_player_id,legacy,model,texture_id,unique_owners) values ($1,$2,

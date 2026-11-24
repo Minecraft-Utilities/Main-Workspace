@@ -78,8 +78,9 @@ class PlayerNameChangeBroadcastTest {
                 this.playerRefreshRepository,
                 null,
                 null,
+                null,
                 // Stands in for the @Lazy self proxy Spring injects, which owns the REQUIRES_NEW boundary.
-                new PlayerService(null, null, skinService, capeService, this.playerRepository, usernameChangeEventRepository, null, null, this.playerRefreshRepository, null, null, null, 64),
+                new PlayerService(null, null, skinService, capeService, this.playerRepository, usernameChangeEventRepository, null, null, this.playerRefreshRepository, null, null, null, null, 64),
                 64
         );
 

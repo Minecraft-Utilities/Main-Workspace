@@ -27,6 +27,7 @@ import xyz.mcutils.backend.model.token.mojang.MojangProfileToken;
 import xyz.mcutils.backend.model.token.mojang.MojangUsernameToUuidToken;
 import xyz.mcutils.backend.model.token.mojang.SkinTextureToken;
 import xyz.mcutils.backend.repository.postgres.PlayerCapeAdoptionRepository;
+import xyz.mcutils.backend.repository.postgres.PlayerCreateRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.DuePlayer;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.ScheduleUpdate;
@@ -69,6 +70,7 @@ public class PlayerService {
     private final PlayerCapeAdoptionRepository playerCapeAdoptionRepository;
     private final PlayerRefreshRepository playerRefreshRepository;
     private final PlayerRefreshStateRepository playerRefreshStateRepository;
+    private final PlayerCreateRepository playerCreateRepository;
     private final PlayerMonthlyViewsRepository playerMonthlyViewsRepository;
     private final PlayerService self;
 
@@ -78,7 +80,7 @@ public class PlayerService {
                          PlayerRepository playerRepository, UsernameChangeEventRepository usernameChangeEventRepository,
                          PlayerSkinAdoptionRepository playerSkinAdoptionRepository, PlayerCapeAdoptionRepository playerCapeAdoptionRepository,
                          PlayerRefreshRepository playerRefreshRepository, PlayerRefreshStateRepository playerRefreshStateRepository,
-                         PlayerMonthlyViewsRepository playerMonthlyViewsRepository,
+                         PlayerMonthlyViewsRepository playerMonthlyViewsRepository, PlayerCreateRepository playerCreateRepository,
                          @Lazy PlayerService self,
                          @Value("${mc-utils.player-refresh.concurrent-persists:64}") int concurrentPersists) {
         this.mojangService = mojangService;
@@ -92,6 +94,7 @@ public class PlayerService {
         this.playerRefreshRepository = playerRefreshRepository;
         this.playerRefreshStateRepository = playerRefreshStateRepository;
         this.playerMonthlyViewsRepository = playerMonthlyViewsRepository;
+        this.playerCreateRepository = playerCreateRepository;
         this.self = self;
         this.persistSemaphore = new Semaphore(concurrentPersists);
     }
@@ -248,7 +251,8 @@ public class PlayerService {
         List<PlayerCapeAdoptionRow> capeAdoptions = new ArrayList<>();
 
         Instant now = Instant.now();
-        for (MojangProfileToken token : tokens) {
+        List<MojangProfileToken> byId = tokens.stream().sorted(Comparator.comparing(t -> UUIDUtils.parseUuid(t.getId()).toString())).toList();
+        for (MojangProfileToken token : byId) {
             UUID id = UUIDUtils.parseUuid(token.getId());
             if (existingIds.contains(id)) {
                 continue;
@@ -270,12 +274,7 @@ public class PlayerService {
             return;
         }
 
-        this.playerRepository.saveAll(playerRows);
-        this.playerRefreshStateRepository.saveAll(refreshStates);
-        this.playerSkinAdoptionRepository.saveAll(skinAdoptions);
-        if (!capeAdoptions.isEmpty()) {
-            this.playerCapeAdoptionRepository.saveAll(capeAdoptions);
-        }
+        this.playerCreateRepository.insertAll(playerRows, refreshStates, skinAdoptions, capeAdoptions);
         StatisticsService.addTrackedPlayerCount(playerRows.size());
     }
 

@@ -1,0 +1,26 @@
+== submit benchmark 20261124-075625 (20000 players, seed mcutils_bench_seed_idle, args: )
+{
+ "submitted": 20000,
+ "created": 20000,
+ "seconds": 51.3,
+ "players_per_s": 390.0,
+ "wal_bytes_per_player": 77015,
+ "wal_records_per_player": 23.4,
+ "wal_fpi_per_player": 11.43,
+ "wal_mb": 1540.3
+}
+-- top SQL by total time
+19989 | 27487 | 1.375 | 19540 | select sr1_0.id,sr1_0.first_seen,sr1_0.first_seen_using_player_id,sr1_0.legacy,sr1_0.model,sr1_0.texture_id,sr
+21 | 21723 | 1034.441 | 20000 | INSERT INTO players (id, username, legacy_account, submitted_uuids, skin_id, cape_id, first_seen) SELECT v.id:
+21 | 10171 | 484.326 | 20000 | INSERT INTO player_skin_adoptions (player_id, skin_id, first_seen, last_equipped_at) SELECT v.player_id::uuid,
+42 | 5085 | 121.064 | 0 | select pr1_0.id from players pr1_0 where pr1_0.id in ($1 /*, ... */)
+21 | 4733 | 225.394 | 20000 | INSERT INTO player_refresh_state (player_id, next_refresh_at, change_velocity, last_updated) SELECT v.id::uuid
+21 | 877 | 41.762 | 2810 | INSERT INTO player_cape_adoptions (player_id, cape_id, first_seen, last_equipped_at) SELECT v.player_id::uuid,
+3 | 603 | 200.947 | 3 | SELECT count(*) FROM players WHERE first_seen > now() - interval $1 AND id IN (SELECT md5($2 || i)::uuid FROM 
+5 | 59 | 11.806 | 0 | SELECT s.player_id FROM player_refresh_state s WHERE s.next_refresh_at < $1 AND s.change_velocity >= $3 AND NO
+449 | 49 | 0.109 | 449 | insert into skins (first_seen,first_seen_using_player_id,legacy,model,texture_id,unique_owners) values ($1,$2,
+449 | 34 | 0.077 | 405 | update skins sr1_0 set legacy=$1 where sr1_0.texture_id=$2
+1 | 32 | 31.950 | 20000 | SELECT $1 || md5($2 || i)::uuid FROM generate_series($3, $4 + $5 - $6) i
+20589 | 10 | 0.000 | 0 | BEGIN
+20 | 6 | 0.302 | 20 | select sr1_0.id,sr1_0.first_seen,sr1_0.first_seen_using_player_id,sr1_0.legacy,sr1_0.model,sr1_0.texture_id,sr
+130 | 2 | 0.018 | 130 | select cr1_0.id,cr1_0.first_seen,cr1_0.first_seen_using_player_id,cr1_0.name,cr1_0.texture_id,cr1_0.unique_own
