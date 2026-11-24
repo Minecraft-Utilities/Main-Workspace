@@ -23,7 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -39,7 +38,7 @@ public class ServerRegistryService {
 
     private final GitHub githubClient;
     private final WebRequest webRequest;
-    private final List<ServerRegistryEntry> entries = new CopyOnWriteArrayList<>();
+    private volatile List<ServerRegistryEntry> entries = List.of();
     private String lastSeenHash = null;
 
     @SneakyThrows
@@ -152,11 +151,11 @@ public class ServerRegistryService {
         if (zipBytes == null) {
             return;
         }
-        List<ServerRegistryEntry> newEntries = extractManifestsFromZip(zipBytes);
-        entries.clear();
-        entries.addAll(newEntries);
+        List<ServerRegistryEntry> newEntries = List.copyOf(extractManifestsFromZip(zipBytes));
+        // One assignment, so a concurrent search never sees a half-filled registry.
+        entries = newEntries;
 
-        log.info("Found {} server registry entries! (commit hash: {})", entries.size(), commitHash);
+        log.info("Found {} server registry entries! (commit hash: {})", newEntries.size(), commitHash);
 
         lastSeenHash = commitHash;
     }
