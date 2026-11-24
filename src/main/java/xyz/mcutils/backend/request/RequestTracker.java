@@ -20,14 +20,15 @@ import xyz.mcutils.backend.service.MetricService;
 @ControllerAdvice
 @Slf4j
 public class RequestTracker implements ResponseBodyAdvice<Object> {
+    private static final String UNKNOWN_ENDPOINT = "unknown";
 
     @Override
     public Object beforeBodyWrite(Object body, @NonNull MethodParameter returnType, @NonNull MediaType selectedContentType, @NonNull Class<? extends HttpMessageConverter<?>> selectedConverterType, @NonNull ServerHttpRequest rawRequest, @NonNull ServerHttpResponse rawResponse) {
         HttpServletRequest request = ((ServletServerHttpRequest) rawRequest).getServletRequest();
-        String uri = request.getRequestURI();
 
         String pattern = (String) request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
-        String endpoint = pattern != null ? pattern : uri;
+        // Unmatched URIs are attacker-controlled, so they must not become metric labels.
+        String endpoint = pattern != null ? pattern : UNKNOWN_ENDPOINT;
         String method = rawRequest.getMethod().name();
 
         int status = 200;
