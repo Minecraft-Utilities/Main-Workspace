@@ -24,7 +24,7 @@ export default function NameChanges({
   const queryClient = useQueryClient();
   const hasConnectedRef = useRef(false);
 
-  const { data: nameChanges = initialNameChanges, refetch, dataUpdatedAt } = useQuery({
+  const { data: nameChanges = initialNameChanges, refetch } = useQuery({
     queryKey: RECENT_NAME_CHANGES_QUERY_KEY,
     queryFn: async () => {
       const { data, error } = await mcUtilsApi.player().nameChanges();

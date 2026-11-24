@@ -11,7 +11,7 @@ import { Clock, Loader2, Search, Server, User, X } from "lucide-react";
 import type { BasicPlayer, ErrorResponse, Platform, ServerRegistryEntry } from "mcutils-js-api";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import PlayerLookupEntry from "../player/player-lookup-entry";
 import ServerLookupEntry from "../server/server-lookup-entry";
@@ -106,7 +106,7 @@ export default function QuerySearch({ landingPage, className, setQueryError }: Q
     defaultValues: { query: "" },
   });
 
-  const queryValue = form.watch("query");
+  const queryValue = useWatch({ control: form.control, name: "query" });
   const debouncedQuery = useDebounce(queryValue.trim(), 300);
 
   const {

@@ -14,7 +14,7 @@ import { useRef, useState } from "react";
 import PlayerSkin3D from "./player-skin-3d";
 import Skin3DButtons from "./skin-3d-buttons";
 
-const SKIN_MODES = ["3D", "2D"];
+type SkinMode = "3D" | "2D";
 
 export interface PlayerSkinProps {
   player: FullPlayer;
@@ -27,7 +27,7 @@ export default function PlayerSkin({ player }: PlayerSkinProps) {
   const displaySkin = hoveredSkin ?? selectedSkin;
   const displayCape = hoveredCape ?? selectedCape;
 
-  const [selectedMode, setSelectedMode] = useState<(typeof SKIN_MODES)[number]>("2D");
+  const [selectedMode, setSelectedMode] = useState<SkinMode>("2D");
   const [selectedPart, setSelectedPart] = useState<SkinPart>("FULLBODY_ISO_FRONT");
   const [hoveredPart, setHoveredPart] = useState<SkinPart | null>(null);
   const [hoveredMode, setHoveredMode] = useState<string | null>(null);
@@ -65,7 +65,7 @@ export default function PlayerSkin({ player }: PlayerSkinProps) {
           )}
           {displayMode === "3D" && (
             <Skin3DSettingsProvider player={player}>
-              <PlayerSkin3D player={player} />
+              <PlayerSkin3D />
               <Skin3DButtons player={player} />
             </Skin3DSettingsProvider>
           )}

@@ -57,7 +57,7 @@ export default async function SkinsPage({ params }: PageProps<"/skin/[query]">) 
       <header className="w-full max-w-[980px] text-left">
         <h1 className="text-foreground text-4xl font-bold tracking-tight">
           <span className="block sm:inline">
-            <SimpleLink href={`/player/${skin.firstSeenUsing}`}>{skin.firstSeenUsing}'s Skin</SimpleLink>
+            <SimpleLink href={`/player/${skin.firstSeenUsing}`}>{skin.firstSeenUsing}&apos;s Skin</SimpleLink>
           </span>
         </h1>
       </header>

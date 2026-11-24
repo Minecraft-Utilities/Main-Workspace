@@ -24,7 +24,7 @@ export default function CopyLink({ text, className }: CopyLinkProps) {
     <button
       type="button"
       onClick={handleCopy}
-      className={cn("text-[#7289da] hover:text-[#8ea1e8] shrink-0 text-sm transition-colors", className)}
+      className={cn("shrink-0 text-sm text-[#7289da] transition-colors hover:text-[#8ea1e8]", className)}
     >
       Copy
     </button>

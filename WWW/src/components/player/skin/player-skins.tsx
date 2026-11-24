@@ -37,7 +37,6 @@ export default function PlayerSkins({ player }: PlayerSkinsProps) {
       <CardContent className="flex h-full flex-wrap items-center justify-center gap-2">
         {skins.map(skin => {
           const isSelected = selectedSkin?.textureId === skin.textureId;
-          const isCurrent = player.skin.textureId === skin.textureId;
 
           return (
             <SimpleTooltip

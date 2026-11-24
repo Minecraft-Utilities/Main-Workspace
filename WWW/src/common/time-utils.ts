@@ -324,29 +324,6 @@ export enum TimeUnit {
 }
 
 /**
- * Namespace for TimeUnit methods
- */
-export namespace TimeUnit {
-  export function toMillis(unit: TimeUnit, value: number): number {
-    const multipliers: Record<TimeUnit, number> = {
-      [TimeUnit.Millisecond]: 1,
-      [TimeUnit.Second]: 1000,
-      [TimeUnit.Minute]: 60 * 1000,
-      [TimeUnit.Hour]: 60 * 60 * 1000,
-      [TimeUnit.Day]: 24 * 60 * 60 * 1000,
-      [TimeUnit.Week]: 7 * 24 * 60 * 60 * 1000,
-      [TimeUnit.Month]: 30 * 24 * 60 * 60 * 1000,
-      [TimeUnit.Year]: 365 * 24 * 60 * 60 * 1000,
-    };
-    return value * multipliers[unit];
-  }
-
-  export function toSeconds(unit: TimeUnit, value: number): number {
-    return toMillis(unit, value) / 1000;
-  }
-}
-
-/**
  * Checks if a date is today
  *
  * @param date the date

@@ -3,22 +3,20 @@
 import { useSelectedCape } from "@/components/provider/selected-cape-provider";
 import { useSelectedSkin } from "@/components/provider/selected-skin-provider";
 import { useSkin3DSettings } from "@/components/provider/skin-3d-settings-provider";
-import type { FullPlayer } from "mcutils-js-api";
 import { useEffect, useRef } from "react";
 import { Render } from "skin3d";
 
-export interface PlayerSkin3DProps {
-  player: FullPlayer;
-}
-
-export default function PlayerSkin3D({ player }: PlayerSkin3DProps) {
+export default function PlayerSkin3D() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const viewerRef = useRef<Render | null>(null);
   const { updateSkinViewerRef } = useSkin3DSettings();
   const { selectedSkin } = useSelectedSkin();
   const { selectedCape } = useSelectedCape();
   const selectedCapeRef = useRef(selectedCape);
-  selectedCapeRef.current = selectedCape;
+
+  useEffect(() => {
+    selectedCapeRef.current = selectedCape;
+  }, [selectedCape]);
 
   // Initialize the viewer (recreate only when the skin changes)
   useEffect(() => {

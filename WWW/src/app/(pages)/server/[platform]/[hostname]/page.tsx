@@ -13,9 +13,7 @@ import { cache } from "react";
 export const dynamic = "force-dynamic";
 
 const fetchServerCached = cache((hostname: string, edition: Platform) =>
-  edition === "JAVA"
-    ? mcUtilsApi.server().fetchJava(hostname)
-    : mcUtilsApi.server().fetchBedrock(hostname)
+  edition === "JAVA" ? mcUtilsApi.server().fetchJava(hostname) : mcUtilsApi.server().fetchBedrock(hostname)
 );
 
 async function getServer(platform: string, hostname: string) {
