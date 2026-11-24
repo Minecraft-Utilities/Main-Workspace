@@ -1,0 +1,26 @@
+== submit benchmark 20261124-085658 (20000 players, seed mcutils_bench_seed_idle, args: )
+{
+ "submitted": 20000,
+ "created": 20000,
+ "seconds": 58.2,
+ "players_per_s": 343.9,
+ "wal_bytes_per_player": 69962,
+ "wal_records_per_player": 23.5,
+ "wal_fpi_per_player": 10.47,
+ "wal_mb": 1399.2
+}
+-- top SQL by total time
+21 | 20546 | 978.397 | 20000 | INSERT INTO players (id, username, legacy_account, submitted_uuids, skin_id, cape_id, first_seen) SELECT v.id:
+21 | 11457 | 545.568 | 19551 | select sr1_0.id,sr1_0.first_seen,sr1_0.first_seen_using_player_id,sr1_0.legacy,sr1_0.model,sr1_0.texture_id,sr
+21 | 10134 | 482.585 | 20000 | INSERT INTO player_skin_adoptions (player_id, skin_id, first_seen, last_equipped_at) SELECT v.player_id::uuid,
+42 | 5226 | 124.440 | 0 | select pr1_0.id from players pr1_0 where pr1_0.id in ($1 /*, ... */)
+21 | 4978 | 237.065 | 20000 | INSERT INTO player_refresh_state (player_id, next_refresh_at, change_velocity, last_updated) SELECT v.id::uuid
+21 | 966 | 46.016 | 2810 | INSERT INTO player_cape_adoptions (player_id, cape_id, first_seen, last_equipped_at) SELECT v.player_id::uuid,
+3 | 564 | 188.123 | 3 | SELECT count(*) FROM players WHERE first_seen > now() - interval $1 AND id IN (SELECT md5($2 || i)::uuid FROM 
+449 | 112 | 0.249 | 449 | insert into skins (first_seen,first_seen_using_player_id,legacy,model,texture_id,unique_owners) values ($1,$2,
+6 | 56 | 9.358 | 0 | SELECT s.player_id FROM player_refresh_state s WHERE s.next_refresh_at < $1 AND s.change_velocity >= $3 AND NO
+449 | 39 | 0.086 | 0 | select sr1_0.id,sr1_0.first_seen,sr1_0.first_seen_using_player_id,sr1_0.legacy,sr1_0.model,sr1_0.texture_id,sr
+1 | 32 | 32.479 | 20000 | SELECT $1 || md5($2 || i)::uuid FROM generate_series($3, $4 + $5 - $6) i
+39 | 18 | 0.469 | 385 | update skins sr1_0 set legacy=$1 where sr1_0.texture_id in ($2 /*, ... */)
+20 | 6 | 0.284 | 20 | select sr1_0.id,sr1_0.first_seen,sr1_0.first_seen_using_player_id,sr1_0.legacy,sr1_0.model,sr1_0.texture_id,sr
+21 | 3 | 0.141 | 847 | select cr1_0.id,cr1_0.first_seen,cr1_0.first_seen_using_player_id,cr1_0.name,cr1_0.texture_id,cr1_0.unique_own
