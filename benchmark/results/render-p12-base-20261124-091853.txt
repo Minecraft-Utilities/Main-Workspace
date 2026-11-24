@@ -1,0 +1,10 @@
+== render benchmark 20261124-091853
+{
+ "seconds": 40,
+ "concurrency": 16,
+ "requests": 2382,
+ "rps": 59.5,
+ "p50": 346.7,
+ "p99": 1127.9,
+ "errors": 0
+}
