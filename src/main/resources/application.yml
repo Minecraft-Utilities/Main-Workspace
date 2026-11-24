@@ -32,6 +32,7 @@ spring:
     mapper:
       sort-properties-alphabetically: false
   jpa:
+    open-in-view: false
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: validate

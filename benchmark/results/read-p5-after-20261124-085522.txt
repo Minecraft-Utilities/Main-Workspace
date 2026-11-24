@@ -1,0 +1,63 @@
+== read benchmark 20261124-085522 (60s, concurrency 8, args: )
+{
+ "seconds": 60,
+ "concurrency": 8,
+ "requests": 198539,
+ "rps": 3309,
+ "classes": {
+  "player by uuid": {
+   "n": 59748,
+   "p50": 1.1,
+   "p99": 5,
+   "max": 136,
+   "errors": 0
+  },
+  "player by name": {
+   "n": 59645,
+   "p50": 3.9,
+   "p99": 9.6,
+   "max": 59.9,
+   "errors": 0
+  },
+  "player full": {
+   "n": 29511,
+   "p50": 2.5,
+   "p99": 10.4,
+   "max": 176.8,
+   "errors": 0
+  },
+  "search common prefix": {
+   "n": 29793,
+   "p50": 1.6,
+   "p99": 6.4,
+   "max": 26.9,
+   "errors": 0
+  },
+  "search rare prefix": {
+   "n": 9761,
+   "p50": 0.5,
+   "p99": 2.3,
+   "max": 132.8,
+   "errors": 0
+  },
+  "recent name changes": {
+   "n": 10081,
+   "p50": 0.7,
+   "p99": 2.5,
+   "max": 124,
+   "errors": 0
+  }
+ }
+}
+-- SQL: 1080178 174914 (calls, total ms)
+-- top SQL by total time
+59562 | 138353 | 2.32 | select pr1_0.id from players pr1_0 where upper(pr1_0.username)=upper($1)
+148787 | 13296 | 0.09 | select pr1_0.id,c1_0.id,c1_0.first_seen,c1_0.first_seen_using_player_id,c1_0.name,c1_0.texture_id,c1_0.unique_
+148787 | 4751 | 0.03 | select prsr1_0.player_id,prsr1_0.change_velocity,prsr1_0.last_updated,prsr1_0.next_refresh_at from player_refr
+148271 | 4056 | 0.03 | select sr1_0.id,sr1_0.first_seen,sr1_0.first_seen_using_player_id,sr1_0.legacy,sr1_0.model,sr1_0.texture_id,sr
+29511 | 2816 | 0.10 | select psar1_0.player_id,psar1_0.skin_id,psar1_0.first_seen,psar1_0.last_equipped_at,s1_0.id,s1_0.first_seen,s
+39554 | 2398 | 0.06 | SELECT * FROM players WHERE upper(username) ~>=~ upper($1) AND upper(username) ~<~ (upper($2) || chr($4)) ORDE
+1 | 2025 | 2025.22 | select count(*) from skins sr1_0
+1 | 1958 | 1958.25 | select count(*) from players pr1_0
+29511 | 1810 | 0.06 | select pcar1_0.cape_id,pcar1_0.player_id,c1_0.id,c1_0.first_seen,c1_0.first_seen_using_player_id,c1_0.name,c1_
+386113 | 989 | 0.00 | BEGIN READ ONLY

@@ -4,7 +4,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
@@ -34,12 +33,20 @@ public final class CoalescingLoader<K, V> {
      * @throws RuntimeException if the loader throws (or any failure), unwrapped from {@link CompletionException}
      */
     public V get(K key, Supplier<V> loader) {
-        AtomicReference<CompletableFuture<V>> created = new AtomicReference<>();
-        CompletableFuture<V> future = inFlight.computeIfAbsent(key, _ -> {
-            CompletableFuture<V> f = CompletableFuture.supplyAsync(loader, executor);
-            created.set(f);
-            return f;
-        });
+        CompletableFuture<V> placeholder = new CompletableFuture<>();
+        CompletableFuture<V> existing = inFlight.putIfAbsent(key, placeholder);
+        boolean owner = existing == null;
+        CompletableFuture<V> future = owner ? placeholder : existing;
+        if (owner) {
+            // Started after the insert so a blocking loader never runs under a map bin lock.
+            CompletableFuture.supplyAsync(loader, executor).whenComplete((value, error) -> {
+                if (error != null) {
+                    placeholder.completeExceptionally(error);
+                } else {
+                    placeholder.complete(value);
+                }
+            });
+        }
         try {
             return future.join();
         } catch (CompletionException e) {
@@ -51,7 +58,7 @@ public final class CoalescingLoader<K, V> {
         } finally {
             // Only the caller that created the load removes the key: if every joiner removed it,
             // a later caller could start a second load for the same key.
-            if (created.get() != null) {
+            if (owner) {
                 inFlight.remove(key);
             }
         }
