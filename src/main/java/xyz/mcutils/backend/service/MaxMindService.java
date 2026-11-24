@@ -1,5 +1,6 @@
 package xyz.mcutils.backend.service;
 
+import com.google.common.net.InetAddresses;
 import com.maxmind.db.CHMCache;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.exception.AddressNotFoundException;
@@ -19,6 +20,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import xyz.mcutils.backend.Main;
+import xyz.mcutils.backend.exception.impl.BadRequestException;
 import xyz.mcutils.backend.exception.impl.NotFoundException;
 import xyz.mcutils.backend.metric.impl.ip.IpLookupMetric;
 import xyz.mcutils.backend.model.domain.IpLookup;
@@ -82,12 +84,13 @@ public class MaxMindService {
     @Cacheable(value = "geoLookup", key = "#ip")
     public IpLookup lookupIp(@NonNull String ip) {
         log.debug("Getting lookup for IP: {}", ip);
+        InetAddress address = parseAddress(ip);
 
         long lookupStart = System.currentTimeMillis();
         IpLookupMetric.Result metricResult = IpLookupMetric.Result.ERROR;
         try {
-            CompletableFuture<GeoLocation> cityFuture = lookupCity(ip);
-            CompletableFuture<AsnLookup> asnFuture = lookupAsn(ip);
+            CompletableFuture<GeoLocation> cityFuture = lookupCity(address);
+            CompletableFuture<AsnLookup> asnFuture = lookupAsn(address);
 
             CompletableFuture.allOf(cityFuture, asnFuture).join();
 
@@ -113,7 +116,7 @@ public class MaxMindService {
      * @param ip the address
      * @return a future containing the ASN response, or null if none
      */
-    private CompletableFuture<AsnLookup> lookupAsn(@NonNull String ip) {
+    private CompletableFuture<AsnLookup> lookupAsn(@NonNull InetAddress ip) {
         return CompletableFuture.supplyAsync(() -> {
             DatabaseReader database = getDatabase(Database.ASN);
             if (database == null) {
@@ -121,7 +124,7 @@ public class MaxMindService {
             }
 
             try {
-                AsnResponse asn = database.asn(InetAddress.getByName(ip));
+                AsnResponse asn = database.asn(ip);
                 if (asn == null) {
                     return null;
                 }
@@ -141,7 +144,7 @@ public class MaxMindService {
      * @param ip the address
      * @return a future containing the city response, or null if none
      */
-    private CompletableFuture<GeoLocation> lookupCity(@NonNull String ip) {
+    private CompletableFuture<GeoLocation> lookupCity(@NonNull InetAddress ip) {
         return CompletableFuture.supplyAsync(() -> {
             DatabaseReader database = getDatabase(Database.CITY);
             if (database == null) {
@@ -149,7 +152,7 @@ public class MaxMindService {
             }
 
             try {
-                CityResponse city = database.city(InetAddress.getByName(ip));
+                CityResponse city = database.city(ip);
                 Country country = city.country();
                 Location location = city.location();
 
@@ -167,6 +170,22 @@ public class MaxMindService {
                 throw new CompletionException(e);
             }
         }, Main.EXECUTOR);
+    }
+
+    /**
+     * Parses a literal IP address. Only literals are accepted: resolving hostname input
+     * would let a caller trigger arbitrary DNS lookups.
+     *
+     * @param ip the literal IP address
+     * @return the parsed address
+     * @throws BadRequestException if the input is not a literal IPv4 or IPv6 address
+     */
+    private static InetAddress parseAddress(@NonNull String ip) {
+        try {
+            return InetAddresses.forString(ip);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid IP address: %s".formatted(ip));
+        }
     }
 
     /**
