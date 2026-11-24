@@ -40,6 +40,7 @@ public interface PlayerRepository extends JpaRepository<PlayerRow, UUID> {
             LIMIT :limit
             """, nativeQuery = true)
     List<PlayerRow> searchByUsernamePrefix(@Param("prefix") String prefix, @Param("limit") int limit);
+    @EntityGraph(attributePaths = {"skin", "cape"})
     List<PlayerRow> findAllByOrderBySubmittedUuidsDesc(Pageable pageable);
 
     @Query("SELECT p.username FROM PlayerRow p WHERE p.skin.id = :skinId")

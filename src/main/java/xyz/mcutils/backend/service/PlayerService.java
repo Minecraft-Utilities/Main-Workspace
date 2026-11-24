@@ -43,6 +43,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -74,6 +75,8 @@ public class PlayerService {
     private final PlayerMonthlyViewsRepository playerMonthlyViewsRepository;
     private final PlayerService self;
 
+    // A stale player stays stale until its refresh lands; without this every view in that window starts another Mojang call.
+    private final Set<UUID> refreshesInFlight = ConcurrentHashMap.newKeySet();
     private final CoalescingLoader<String, PlayerRow> playerLoader = new CoalescingLoader<>(Runnable::run);
 
     public PlayerService(MojangService mojangService, MojangRateLimiter mojangRateLimiter, SkinService skinService, CapeService capeService,
@@ -133,7 +136,8 @@ public class PlayerService {
             // refresh and submit queue.
             PlayerRefreshStateRow refreshState = this.playerRefreshStateRepository.findById(playerRow.getId()).orElse(null);
             if (refreshState != null && refreshState.getNextRefreshAt().isBefore(Instant.now())
-                    && this.playerMonthlyViewsRepository.existsById(playerRow.getId())) {
+                    && this.playerMonthlyViewsRepository.existsById(playerRow.getId())
+                    && this.refreshesInFlight.add(playerRow.getId())) {
                 Main.EXECUTOR.execute(() -> {
                     try {
                         this.mojangRateLimiter.acquire();
@@ -145,6 +149,8 @@ public class PlayerService {
                         this.self.updatePlayer(playerRow, refreshState, token);
                     } catch (Exception e) {
                         this.bumpRefreshFailure(playerRow.getId());
+                    } finally {
+                        this.refreshesInFlight.remove(playerRow.getId());
                     }
                 });
             }
