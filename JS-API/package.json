@@ -19,7 +19,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Minecraft-Utilities/JS-API"
+    "url": "git+https://github.com/Minecraft-Utilities/Main-Workspace.git",
+    "directory": "JS-API"
   },
   "dependencies": {
     "openapi-fetch": "^0.17.0"
