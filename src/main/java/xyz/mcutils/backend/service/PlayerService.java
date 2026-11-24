@@ -215,8 +215,13 @@ public class PlayerService {
             }
         }
 
+        Map<String, SkinRow> skinsByTextureId = new HashMap<>(this.skinService.findByTextureIds(firstSkinOwnerByTextureId.keySet()));
+        Map<String, CapeRow> capesByTextureId = new HashMap<>(this.capeService.findByTextureIds(firstCapeOwnerByTextureId.keySet()));
+
+        // Only textures the bulk lookup did not find need a create, which is the rare case.
         Map<String, CompletableFuture<SkinRow>> skinFutures = tokens.stream()
                 .map(t -> t.getSkinAndCape().left())
+                .filter(t -> !skinsByTextureId.containsKey(t.getTextureId()))
                 .collect(Collectors.toMap(
                         SkinTextureToken::getTextureId,
                         t -> CompletableFuture.supplyAsync(() ->
@@ -226,7 +231,7 @@ public class PlayerService {
 
         Map<String, CompletableFuture<CapeRow>> capeFutures = tokens.stream()
                 .map(t -> t.getSkinAndCape().right())
-                .filter(Objects::nonNull)
+                .filter(t -> t != null && !capesByTextureId.containsKey(t.getTextureId()))
                 .collect(Collectors.toMap(
                         CapeTextureToken::getTextureId,
                         t -> CompletableFuture.supplyAsync(() ->
@@ -236,11 +241,8 @@ public class PlayerService {
 
         CompletableFuture.allOf(Stream.concat(skinFutures.values().stream(), capeFutures.values().stream())
                 .toArray(CompletableFuture[]::new)).join();
-
-        Map<String, SkinRow> skinsByTextureId = skinFutures.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().join()));
-        Map<String, CapeRow> capesByTextureId = capeFutures.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().join()));
+        skinFutures.forEach((textureId, future) -> skinsByTextureId.put(textureId, future.join()));
+        capeFutures.forEach((textureId, future) -> capesByTextureId.put(textureId, future.join()));
 
         List<UUID> ids = tokens.stream().map(t -> UUIDUtils.parseUuid(t.getId())).toList();
         Set<UUID> existingIds = this.playerRepository.findExistingIds(ids);
@@ -274,8 +276,8 @@ public class PlayerService {
             return;
         }
 
-        this.playerCreateRepository.insertAll(playerRows, refreshStates, skinAdoptions, capeAdoptions);
-        StatisticsService.addTrackedPlayerCount(playerRows.size());
+        int inserted = this.playerCreateRepository.insertAll(playerRows, refreshStates, skinAdoptions, capeAdoptions);
+        StatisticsService.addTrackedPlayerCount(inserted);
     }
 
     /**

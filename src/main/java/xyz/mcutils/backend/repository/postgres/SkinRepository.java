@@ -10,9 +10,13 @@ import org.springframework.transaction.annotation.Transactional;
 import xyz.mcutils.backend.model.persistence.postgres.SkinRow;
 
 import java.util.Optional;
+import java.util.List;
+import java.util.Collection;
 
 public interface SkinRepository extends JpaRepository<SkinRow, Long> {
     Optional<SkinRow> findByTextureId(String textureId);
+
+    List<SkinRow> findByTextureIdIn(Collection<String> textureIds);
 
     @Query("SELECT s FROM SkinRow s")
     Slice<SkinRow> findAllSkins(Pageable pageable);

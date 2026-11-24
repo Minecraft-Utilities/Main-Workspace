@@ -24,18 +24,20 @@ public class PlayerCreateRepository {
         this.jdbc = jdbc;
     }
 
+    /** @return the number of players actually inserted; rows that already existed are skipped. */
     @Transactional
-    public void insertAll(List<PlayerRow> players,
+    public int insertAll(List<PlayerRow> players,
                           List<PlayerRefreshStateRow> states,
                           List<PlayerSkinAdoptionRow> skinAdoptions,
                           List<PlayerCapeAdoptionRow> capeAdoptions) {
-        insertPlayers(players);
+        int inserted = insertPlayers(players);
         insertStates(states);
         insertSkinAdoptions(skinAdoptions);
         insertCapeAdoptions(capeAdoptions);
+        return inserted;
     }
 
-    private void insertPlayers(List<PlayerRow> rows) {
+    private int insertPlayers(List<PlayerRow> rows) {
         int n = rows.size();
         String[] ids = new String[n];
         String[] names = new String[n];
@@ -54,7 +56,7 @@ public class PlayerCreateRepository {
             capeIds[i] = row.getCape() != null ? row.getCape().getId() : null;
             firstSeen[i] = row.getFirstSeen().toEpochMilli();
         }
-        this.jdbc.sql("""
+        return this.jdbc.sql("""
                         INSERT INTO players (id, username, legacy_account, submitted_uuids, skin_id, cape_id, first_seen)
                         SELECT v.id::uuid, v.username, v.legacy, v.submitted, v.skin_id, v.cape_id, to_timestamp(v.first_seen / 1000.0)
                         FROM unnest(:ids::text[], :names::text[], :legacy::boolean[], :submitted::bigint[],

@@ -34,6 +34,10 @@ import xyz.mcutils.backend.repository.postgres.SkinTrendingRepository;
 import java.awt.image.BufferedImage;
 import java.time.Instant;
 import java.util.List;
+import java.util.Collection;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -185,6 +189,11 @@ public class SkinService {
     @Cacheable(value = "skinByTextureId", key = "#token.textureId")
     public SkinRow getOrCreateSkinCached(SkinTextureToken token, UUID playerId) {
         return getOrCreateSkin(token, playerId);
+    }
+
+    public Map<String, SkinRow> findByTextureIds(Collection<String> textureIds) {
+        return this.skinRepository.findByTextureIdIn(textureIds).stream()
+                .collect(Collectors.toMap(SkinRow::getTextureId, Function.identity()));
     }
 
     public SkinRow getOrCreateSkin(SkinTextureToken token, UUID playerId) {

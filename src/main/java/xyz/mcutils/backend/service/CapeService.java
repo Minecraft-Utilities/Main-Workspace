@@ -29,6 +29,10 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
+import java.util.Collection;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -135,6 +139,11 @@ public class CapeService {
     @Cacheable(value = "capeByTextureId", key = "#token.textureId")
     public CapeRow getOrCreateCapeCached(CapeTextureToken token, UUID playerId) {
         return getOrCreateCape(token, playerId);
+    }
+
+    public Map<String, CapeRow> findByTextureIds(Collection<String> textureIds) {
+        return this.capeRepository.findByTextureIdIn(textureIds).stream()
+                .collect(Collectors.toMap(CapeRow::getTextureId, Function.identity()));
     }
 
     public CapeRow getOrCreateCape(CapeTextureToken token, UUID playerId) {
