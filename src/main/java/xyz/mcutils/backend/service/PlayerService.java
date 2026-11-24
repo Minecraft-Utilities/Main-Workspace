@@ -104,7 +104,6 @@ public class PlayerService {
         INSTANCE = this;
     }
 
-    @Transactional
     public PlayerRow getPlayer(String query) {
         return playerLoader.get(query, () -> {
             boolean isUsername = query.length() <= 16;
@@ -125,7 +124,7 @@ public class PlayerService {
                 if (token == null) {
                     throw new NotFoundException("Player '%s' was not found".formatted(query));
                 }
-                return this.createPlayer(token);
+                return this.self.createPlayer(token);
             }
 
             PlayerRow playerRow = optionalPlayerRow.get();

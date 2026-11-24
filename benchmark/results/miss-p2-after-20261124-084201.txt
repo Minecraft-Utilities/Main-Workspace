@@ -1,0 +1,19 @@
+== miss benchmark 20261124-084201 (30s, miss clients 16, hit clients 4)
+{
+ "seconds": 30,
+ "missClients": 16,
+ "hitClients": 4,
+ "hit": {
+  "n": 359,
+  "p50": 310.6,
+  "p99": 1361.7,
+  "errors": 0
+ },
+ "miss": {
+  "n": 888,
+  "perSec": 29.6,
+  "p50": 404.7,
+  "p99": 1563.4,
+  "errors": 0
+ }
+}
