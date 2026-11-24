@@ -27,9 +27,6 @@ public class PlayerRow {
     @Column(nullable = false, name = "submitted_uuids")
     private long submittedUuids;
 
-    @Column(nullable = false, name = "monthly_views")
-    private long monthlyViews;
-
     @ManyToOne
     @JoinColumn(nullable = false, name = "skin_id")
     private SkinRow skin;
@@ -40,14 +37,5 @@ public class PlayerRow {
     private CapeRow cape;
 
     @Column(nullable = false)
-    private Instant lastUpdated;
-
-    @Column(nullable = false)
     private Instant firstSeen;
-
-    @Column(nullable = false, name = "change_velocity")
-    private double changeVelocity;
-
-    @Column(nullable = false, name = "next_refresh_at")
-    private Instant nextRefreshAt;
 }

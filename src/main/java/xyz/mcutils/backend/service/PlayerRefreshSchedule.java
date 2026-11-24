@@ -5,7 +5,7 @@ import java.time.Instant;
 
 /**
  * Computes per-player refresh intervals from change velocity and popularity.
- * All state is persisted on {@code players}; selection queries only read {@code next_refresh_at}.
+ * All state is persisted on {@code player_refresh_state}; selection queries only read {@code next_refresh_at}.
  * Intervals are spaced geometrically between {@link #MIN_INTERVAL} and {@link #IDLE_INTERVAL}, so the
  * refresh rate tracks the change rate across orders of magnitude instead of a flat hourly range.
  */
@@ -38,9 +38,8 @@ public final class PlayerRefreshSchedule {
      * cold tier, ordered by velocity descending).
      * <p>
      * MUST stay in sync with the partial index predicate in
-     * {@code V39__hot_refresh_priority_index.sql} and the JPQL literals in
-     * {@code PlayerRepository.findHotDueForRefreshSkippable} /
-     * {@code findColdDueForRefreshSkippable} (kept as literals so Postgres can use the partial index).
+     * {@code V52__player_refresh_state.sql} and the SQL literals in
+     * {@code PlayerRefreshRepository} (kept as literals so Postgres can use the partial indexes).
      */
     public static final double HOT_VELOCITY_THRESHOLD = 0.5;
 

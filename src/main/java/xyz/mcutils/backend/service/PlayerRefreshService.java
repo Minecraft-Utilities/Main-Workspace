@@ -5,26 +5,27 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.ResourceAccessException;
 import xyz.mcutils.backend.exception.impl.RateLimitException;
 import xyz.mcutils.backend.metric.impl.player.PlayerRefreshMetric;
-import xyz.mcutils.backend.model.persistence.postgres.PlayerRow;
 import xyz.mcutils.backend.model.token.mojang.MojangProfileToken;
-import xyz.mcutils.backend.repository.postgres.PlayerRepository;
+import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository;
+import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.DuePlayer;
+import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.ScheduleUpdate;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,28 +38,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class PlayerRefreshService {
     private static final Duration CHUNK_TIMEOUT = Duration.ofMinutes(10);
-    /**
-     * Twice the chunk timeout: if a chunk times out, the abandoned in-flight players must
-     * not become due again the instant their lease expires (lease == timeout caused a
-     * claim → timeout → re-claim spin under sustained Mojang slowness).
-     */
-    private static final Duration REFRESH_LEASE = Duration.ofMinutes(20);
-
     private final int refreshChunkSize;
     private final int concurrentFetches;
     private final MojangRateLimiter mojangRateLimiter;
     private final MojangService mojangService;
     private final PlayerService playerService;
-    private final PlayerRepository playerRepository;
-    private final TransactionTemplate transactionTemplate;
+    private final PlayerRefreshRepository playerRefreshRepository;
     private final ExecutorService refreshExecutor;
     private final AtomicBoolean running = new AtomicBoolean(true);
 
     public PlayerRefreshService(
             MojangService mojangService,
             PlayerService playerService,
-            PlayerRepository playerRepository,
-            PlatformTransactionManager transactionManager,
+            PlayerRefreshRepository playerRefreshRepository,
             MojangRateLimiter mojangRateLimiter,
             @Value("${mc-utils.player-refresh.chunk-size:2500}") int refreshChunkSize,
             @Value("${mc-utils.player-refresh.concurrent-fetches:200}") int concurrentFetches
@@ -68,8 +60,7 @@ public class PlayerRefreshService {
         this.mojangRateLimiter = mojangRateLimiter;
         this.mojangService = mojangService;
         this.playerService = playerService;
-        this.playerRepository = playerRepository;
-        this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.playerRefreshRepository = playerRefreshRepository;
         this.refreshExecutor = Executors.newFixedThreadPool(
                 concurrentFetches,
                 Thread.ofPlatform().name("player-refresh-worker-", 0).factory()
@@ -90,7 +81,7 @@ public class PlayerRefreshService {
             while (running.get()) {
                 try {
                     Instant now = Instant.now();
-                    List<PlayerRow> playerRows = claimDuePlayers(now);
+                    List<DuePlayer> playerRows = this.playerRefreshRepository.claimDue(now, refreshChunkSize);
                     if (playerRows.isEmpty()) {
                         Thread.sleep(Duration.ofSeconds(10));
                         continue;
@@ -113,44 +104,22 @@ public class PlayerRefreshService {
         });
     }
 
-    private List<PlayerRow> claimDuePlayers(Instant now) {
-        return transactionTemplate.execute(status -> {
-            // Hot tier first: most-changed and popular players are claimed before stable ones,
-            // so their adaptive intervals actually drive refresh frequency even when the loop
-            // is overloaded (a plain next_refresh_at FIFO would flatten everyone to the same rate).
-            List<PlayerRow> due = new ArrayList<>(playerRepository.findHotDueForRefreshSkippable(
-                    now,
-                    PageRequest.of(0, refreshChunkSize)
-            ));
-            if (due.size() < refreshChunkSize) {
-                due.addAll(playerRepository.findColdDueForRefreshSkippable(
-                        now,
-                        PageRequest.of(0, refreshChunkSize - due.size())
-                ));
-            }
-            if (due.isEmpty()) {
-                return List.of();
-            }
-            List<UUID> ids = due.stream().map(PlayerRow::getId).toList();
-            playerRepository.leasePlayersForRefresh(ids, now.plus(REFRESH_LEASE));
-            return due;
-        });
-    }
-
-    private void refreshChunk(List<PlayerRow> playerRows) {
+    private void refreshChunk(List<DuePlayer> playerRows) {
         long chunkStart = System.currentTimeMillis();
         List<UUID> failedIds = Collections.synchronizedList(new ArrayList<>());
         Map<String, AtomicInteger> failureReasons = new ConcurrentHashMap<>();
         AtomicInteger persisted = new AtomicInteger();
+        Collection<ScheduleUpdate> unchanged = new ConcurrentLinkedQueue<>();
+        Set<UUID> finishedIds = ConcurrentHashMap.newKeySet();
         Semaphore inflightFetches = new Semaphore(concurrentFetches);
         List<CompletableFuture<Void>> futures = new ArrayList<>(playerRows.size());
 
-        for (PlayerRow playerRow : playerRows) {
+        for (DuePlayer playerRow : playerRows) {
             if (!running.get()) {
                 return;
             }
             futures.add(CompletableFuture.runAsync(
-                    () -> refreshPlayer(playerRow, failedIds, failureReasons, persisted, inflightFetches),
+                    () -> refreshPlayer(playerRow, failedIds, failureReasons, persisted, unchanged, finishedIds, inflightFetches),
                     refreshExecutor
             ));
         }
@@ -168,6 +137,20 @@ public class PlayerRefreshService {
             );
         }
 
+        try {
+            this.playerService.persistUnchangedRefreshes(unchanged);
+        } catch (Exception e) {
+            log.error("Failed to write {} unchanged player schedules", unchanged.size(), e);
+            persisted.addAndGet(-unchanged.size());
+            unchanged.forEach(schedule -> failedIds.add(schedule.playerId()));
+        }
+        // Claiming writes nothing, so players the chunk abandoned (timeout) would be due again at once.
+        finishedIds.addAll(failedIds);
+        for (DuePlayer player : playerRows) {
+            if (!finishedIds.contains(player.id())) {
+                failedIds.add(player.id());
+            }
+        }
         if (!failedIds.isEmpty()) {
             this.playerService.bumpRefreshFailures(failedIds);
         }
@@ -215,10 +198,12 @@ public class PlayerRefreshService {
     }
 
     private void refreshPlayer(
-            PlayerRow playerRow,
+            DuePlayer playerRow,
             List<UUID> failedIds,
             Map<String, AtomicInteger> failureReasons,
             AtomicInteger persisted,
+            Collection<ScheduleUpdate> unchanged,
+            Set<UUID> finishedIds,
             Semaphore inflightFetches
     ) {
         if (!running.get()) {
@@ -228,7 +213,7 @@ public class PlayerRefreshService {
             inflightFetches.acquire();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            failedIds.add(playerRow.getId());
+            failedIds.add(playerRow.id());
             return;
         }
         try {
@@ -237,7 +222,8 @@ public class PlayerRefreshService {
             if (update == null) {
                 return;
             }
-            if (this.playerService.persistPlayerRefresh(update)) {
+            if (this.playerService.persistPlayerRefresh(update, unchanged)) {
+                finishedIds.add(playerRow.id());
                 persisted.incrementAndGet();
             }
         } finally {
@@ -246,7 +232,7 @@ public class PlayerRefreshService {
     }
 
     private PlayerService.PlayerUpdate fetchProfile(
-            PlayerRow playerRow,
+            DuePlayer playerRow,
             List<UUID> failedIds,
             Map<String, AtomicInteger> failureReasons
     ) {
@@ -255,24 +241,24 @@ public class PlayerRefreshService {
         }
         MetricService.getMetric(PlayerRefreshMetric.class).recordMojangLookup();
         try {
-            MojangProfileToken token = this.mojangService.getProfile(playerRow.getId().toString());
+            MojangProfileToken token = this.mojangService.getProfile(playerRow.id().toString());
             if (token == null) {
-                failedIds.add(playerRow.getId());
+                failedIds.add(playerRow.id());
                 recordFailure(failureReasons, "null_profile");
                 return null;
             }
             return new PlayerService.PlayerUpdate(playerRow, token);
         } catch (RateLimitException e) {
-            failedIds.add(playerRow.getId());
+            failedIds.add(playerRow.id());
             recordFailure(failureReasons, "rate_limited");
             return null;
         } catch (ResourceAccessException e) {
-            failedIds.add(playerRow.getId());
+            failedIds.add(playerRow.id());
             recordFailure(failureReasons, "timeout");
             return null;
         } catch (Exception e) {
-            log.debug("Mojang profile lookup failed for {}: {}", playerRow.getId(), e.toString());
-            failedIds.add(playerRow.getId());
+            log.debug("Mojang profile lookup failed for {}: {}", playerRow.id(), e.toString());
+            failedIds.add(playerRow.id());
             recordFailure(failureReasons, e.getClass().getSimpleName());
             return null;
         }

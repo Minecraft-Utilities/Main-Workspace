@@ -27,6 +27,10 @@ import xyz.mcutils.backend.model.token.mojang.MojangProfileToken;
 import xyz.mcutils.backend.model.token.mojang.MojangUsernameToUuidToken;
 import xyz.mcutils.backend.model.token.mojang.SkinTextureToken;
 import xyz.mcutils.backend.repository.postgres.PlayerCapeAdoptionRepository;
+import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository;
+import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.DuePlayer;
+import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.ScheduleUpdate;
+import xyz.mcutils.backend.repository.postgres.PlayerRefreshStateRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerSkinAdoptionRepository;
 import xyz.mcutils.backend.repository.postgres.UsernameChangeEventRepository;
@@ -62,6 +66,8 @@ public class PlayerService {
     private final UsernameChangeEventRepository usernameChangeEventRepository;
     private final PlayerSkinAdoptionRepository playerSkinAdoptionRepository;
     private final PlayerCapeAdoptionRepository playerCapeAdoptionRepository;
+    private final PlayerRefreshRepository playerRefreshRepository;
+    private final PlayerRefreshStateRepository playerRefreshStateRepository;
     private final PlayerService self;
 
     private final CoalescingLoader<String, PlayerRow> playerLoader = new CoalescingLoader<>(Runnable::run);
@@ -69,6 +75,7 @@ public class PlayerService {
     public PlayerService(MojangService mojangService, MojangRateLimiter mojangRateLimiter, SkinService skinService, CapeService capeService,
                          PlayerRepository playerRepository, UsernameChangeEventRepository usernameChangeEventRepository,
                          PlayerSkinAdoptionRepository playerSkinAdoptionRepository, PlayerCapeAdoptionRepository playerCapeAdoptionRepository,
+                         PlayerRefreshRepository playerRefreshRepository, PlayerRefreshStateRepository playerRefreshStateRepository,
                          @Lazy PlayerService self,
                          @Value("${mc-utils.player-refresh.concurrent-persists:64}") int concurrentPersists) {
         this.mojangService = mojangService;
@@ -79,6 +86,8 @@ public class PlayerService {
         this.usernameChangeEventRepository = usernameChangeEventRepository;
         this.playerSkinAdoptionRepository = playerSkinAdoptionRepository;
         this.playerCapeAdoptionRepository = playerCapeAdoptionRepository;
+        this.playerRefreshRepository = playerRefreshRepository;
+        this.playerRefreshStateRepository = playerRefreshStateRepository;
         this.self = self;
         this.persistSemaphore = new Semaphore(concurrentPersists);
     }
@@ -116,7 +125,8 @@ public class PlayerService {
             // Only refresh on-demand for viewed players; the background loop owns the long tail.
             // The shared limiter keeps this path inside the same Mojang budget as the background
             // refresh and submit queue.
-            if (playerRow.getNextRefreshAt().isBefore(Instant.now()) && playerRow.getMonthlyViews() > 0) {
+            PlayerRefreshStateRow refreshState = this.playerRefreshStateRepository.findById(playerRow.getId()).orElse(null);
+            if (refreshState != null && refreshState.getNextRefreshAt().isBefore(Instant.now()) && refreshState.getMonthlyViews() > 0) {
                 Main.EXECUTOR.execute(() -> {
                     try {
                         this.mojangRateLimiter.acquire();
@@ -125,7 +135,7 @@ public class PlayerService {
                             this.bumpRefreshFailure(playerRow.getId());
                             return;
                         }
-                        this.self.updatePlayer(playerRow, token);
+                        this.self.updatePlayer(playerRow, refreshState, token);
                     } catch (Exception e) {
                         this.bumpRefreshFailure(playerRow.getId());
                     }
@@ -167,14 +177,11 @@ public class PlayerService {
                 token.getName(),
                 token.getLegacy() != null && token.getLegacy(),
                 0,
-                0,
                 skin,
                 cape,
-                now,
-                now,
-                0,
-                nextRefreshAt
+                now
         ));
+        this.playerRefreshStateRepository.save(new PlayerRefreshStateRow(id, nextRefreshAt, 0, now, 0));
 
         this.playerSkinAdoptionRepository.save(new PlayerSkinAdoptionRow(id, skin.getId(), now, null));
         if (cape != null) {
@@ -231,6 +238,7 @@ public class PlayerService {
         Set<UUID> existingIds = this.playerRepository.findExistingIds(ids);
 
         List<PlayerRow> playerRows = new ArrayList<>();
+        List<PlayerRefreshStateRow> refreshStates = new ArrayList<>();
         List<PlayerSkinAdoptionRow> skinAdoptions = new ArrayList<>();
         List<PlayerCapeAdoptionRow> capeAdoptions = new ArrayList<>();
 
@@ -249,7 +257,8 @@ public class PlayerService {
                 capeAdoptions.add(new PlayerCapeAdoptionRow(id, cape.getId(), now, null));
             }
             playerRows.add(new PlayerRow(id, token.getName(), token.getLegacy() != null && token.getLegacy(),
-                    0, 0, skin, cape, now, now, 0, now.plus(PlayerRefreshSchedule.BASE_INTERVAL)));
+                    0, skin, cape, now));
+            refreshStates.add(new PlayerRefreshStateRow(id, now.plus(PlayerRefreshSchedule.BASE_INTERVAL), 0, now, 0));
         }
 
         if (playerRows.isEmpty()) {
@@ -257,6 +266,7 @@ public class PlayerService {
         }
 
         this.playerRepository.saveAll(playerRows);
+        this.playerRefreshStateRepository.saveAll(refreshStates);
         this.playerSkinAdoptionRepository.saveAll(skinAdoptions);
         if (!capeAdoptions.isEmpty()) {
             this.playerCapeAdoptionRepository.saveAll(capeAdoptions);
@@ -267,14 +277,21 @@ public class PlayerService {
     /**
      * Prepares and persists a single player refresh. Used by the background refresh pipeline.
      * <p>
-     * A detected username change is pushed by the refreshing thread as soon as it is
-     * committed, rather than collected and sent once a whole chunk of players finished.
+     * A refresh that found nothing to change never touches the player row: its new schedule is
+     * appended to {@code unchanged} for the caller to write in one batch via
+     * {@link #persistUnchangedRefreshes}. A detected username change is pushed by the refreshing
+     * thread as soon as it is committed, rather than collected and sent once a whole chunk finished.
      *
-     * @return whether the refresh was persisted
+     * @return whether the refresh was persisted or queued for the batch write
      */
-    public boolean persistPlayerRefresh(PlayerUpdate playerUpdate) {
+    public boolean persistPlayerRefresh(PlayerUpdate playerUpdate, Collection<ScheduleUpdate> unchanged) {
+        UUID playerId = playerUpdate.player().id();
         try {
             PreparedPlayerUpdate prepared = preparePlayerUpdate(playerUpdate);
+            if (!prepared.changesRow()) {
+                unchanged.add(scheduleRefresh(prepared.player(), false, Instant.now()));
+                return true;
+            }
             UsernameChangeEventRow usernameChangeEvent;
             this.persistSemaphore.acquire();
             try {
@@ -286,19 +303,55 @@ public class PlayerService {
             return true;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("Interrupted while refreshing player {}", playerUpdate.playerRow().getId());
-            this.bumpRefreshFailure(playerUpdate.playerRow().getId());
+            log.warn("Interrupted while refreshing player {}", playerId);
+            this.bumpRefreshFailure(playerId);
             return false;
         } catch (Exception e) {
-            log.warn("Failed to refresh player {}: {}", playerUpdate.playerRow().getId(), e.toString());
-            log.debug("Failed to refresh player {}", playerUpdate.playerRow().getId(), e);
-            this.bumpRefreshFailure(playerUpdate.playerRow().getId());
+            log.warn("Failed to refresh player {}: {}", playerId, e.toString());
+            log.debug("Failed to refresh player {}", playerId, e);
+            this.bumpRefreshFailure(playerId);
             return false;
         }
     }
 
-    public void updatePlayer(PlayerRow playerRow, MojangProfileToken token) {
-        this.persistPlayerRefresh(new PlayerUpdate(playerRow, token));
+    /**
+     * Writes the schedules of refreshes that found no change, in one statement.
+     */
+    public void persistUnchangedRefreshes(Collection<ScheduleUpdate> schedules) {
+        if (schedules.isEmpty()) {
+            return;
+        }
+        this.playerRefreshRepository.recordSchedules(schedules);
+        MetricService.getMetric(AccountsUpdatedMetric.class).inc(schedules.size());
+    }
+
+    public void updatePlayer(PlayerRow playerRow, PlayerRefreshStateRow refreshState, MojangProfileToken token) {
+        CapeRow cape = playerRow.getCape();
+        DuePlayer player = new DuePlayer(
+                playerRow.getId(),
+                playerRow.getUsername(),
+                playerRow.isLegacyAccount(),
+                playerRow.getSkin().getTextureId(),
+                cape != null ? cape.getTextureId() : null,
+                refreshState.getChangeVelocity(),
+                refreshState.getLastUpdated(),
+                refreshState.getMonthlyViews()
+        );
+        List<ScheduleUpdate> unchanged = new ArrayList<>(1);
+        this.persistPlayerRefresh(new PlayerUpdate(player, token), unchanged);
+        this.persistUnchangedRefreshes(unchanged);
+    }
+
+    public PlayerRefreshStateRow getRefreshState(UUID playerId) {
+        return this.playerRefreshStateRepository.findById(playerId)
+                .orElseThrow(() -> new IllegalStateException("Player %s has no refresh state".formatted(playerId)));
+    }
+
+    private ScheduleUpdate scheduleRefresh(DuePlayer player, boolean hadChanges, Instant now) {
+        double velocity = PlayerRefreshSchedule.updateVelocity(player.changeVelocity(), player.lastUpdated(), now, hadChanges);
+        Duration interval = PlayerRefreshSchedule.nextRefreshInterval(hadChanges, velocity, player.monthlyViews());
+        MetricService.getMetric(PlayerRefreshMetric.class).recordInterval(interval);
+        return new ScheduleUpdate(player.id(), now.plus(interval), velocity, now);
     }
 
     /**
@@ -322,34 +375,36 @@ public class PlayerService {
      * Resolves skin/cape rows without holding a player row lock.
      */
     private PreparedPlayerUpdate preparePlayerUpdate(PlayerUpdate playerUpdate) {
-        PlayerRow snapshot = playerUpdate.playerRow();
+        DuePlayer snapshot = playerUpdate.player();
         MojangProfileToken token = playerUpdate.token();
         Tuple<SkinTextureToken, CapeTextureToken> skinAndCape = token.getSkinAndCape();
         SkinTextureToken skinToken = skinAndCape != null ? skinAndCape.left() : null;
         CapeTextureToken capeToken = skinAndCape != null ? skinAndCape.right() : null;
 
         SkinRow newSkin = null;
-        if (skinToken != null && !snapshot.getSkin().getTextureId().equals(skinToken.getTextureId())) {
-            newSkin = this.skinService.getOrCreateSkinCached(skinToken, snapshot.getId());
+        if (skinToken != null && !snapshot.skinTextureId().equals(skinToken.getTextureId())) {
+            newSkin = this.skinService.getOrCreateSkinCached(skinToken, snapshot.id());
         }
 
         // A profile without a textures payload (null skinAndCape) means Mojang returned no skin/cape
         // data at all; keep the stored assets unchanged instead of treating them as removed.
-        String oldCapeTextureId = snapshot.getCape() != null ? snapshot.getCape().getTextureId() : null;
         String newCapeTextureId = capeToken != null ? capeToken.getTextureId() : null;
-        boolean capeChanged = skinAndCape != null && !Objects.equals(oldCapeTextureId, newCapeTextureId);
+        boolean capeChanged = skinAndCape != null && !Objects.equals(snapshot.capeTextureId(), newCapeTextureId);
         CapeRow newCape = null;
         if (capeChanged && capeToken != null) {
-            newCape = this.capeService.getOrCreateCapeCached(capeToken, snapshot.getId());
+            newCape = this.capeService.getOrCreateCapeCached(capeToken, snapshot.id());
         }
 
-        return new PreparedPlayerUpdate(snapshot.getId(), token, newSkin, newCape, capeChanged);
+        boolean changesRow = newSkin != null || capeChanged
+                || !snapshot.username().equals(token.getName())
+                || snapshot.legacyAccount() != token.isLegacy();
+        return new PreparedPlayerUpdate(snapshot, token, newSkin, newCape, capeChanged, changesRow);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UsernameChangeEventRow persistPlayerUpdate(PreparedPlayerUpdate prepared) {
         Instant now = Instant.now();
-        Optional<PlayerRow> locked = this.playerRepository.findByIdForUpdate(prepared.playerId());
+        Optional<PlayerRow> locked = this.playerRepository.findByIdForUpdate(prepared.player().id());
         if (locked.isEmpty()) {
             return null;
         }
@@ -394,14 +449,7 @@ public class PlayerService {
         }
 
         boolean hadChanges = changeCount > 0;
-        double velocity = PlayerRefreshSchedule.updateVelocity(
-                playerRow.getChangeVelocity(), playerRow.getLastUpdated(), now, hadChanges);
-        Duration interval = PlayerRefreshSchedule.nextRefreshInterval(hadChanges, velocity, playerRow.getMonthlyViews());
-        playerRow.setChangeVelocity(velocity);
-        playerRow.setNextRefreshAt(now.plus(interval));
-        playerRow.setLastUpdated(now);
-        this.playerRepository.save(playerRow);
-        MetricService.getMetric(PlayerRefreshMetric.class).recordInterval(interval);
+        this.playerRefreshRepository.recordSchedules(List.of(scheduleRefresh(prepared.player(), hadChanges, now)));
         if (equippedSkinId != null) {
             recordSkinEquips(List.of(new PlayerSkinAdoptionRow(playerRow.getId(), equippedSkinId, now, now)), now);
         }
@@ -418,11 +466,12 @@ public class PlayerService {
     }
 
     private record PreparedPlayerUpdate(
-            UUID playerId,
+            DuePlayer player,
             MojangProfileToken token,
             SkinRow newSkin,
             CapeRow newCape,
-            boolean capeChanged
+            boolean capeChanged,
+            boolean changesRow
     ) {}
 
     public Set<UsernameHistory> getUsernameHistory(PlayerRow player) {
@@ -493,7 +542,7 @@ public class PlayerService {
     }
 
     public void bumpRefreshFailure(UUID playerId) {
-        this.playerRepository.bumpRefreshFailure(
+        this.playerRefreshRepository.bumpFailures(
                 List.of(playerId),
                 Instant.now().plus(PlayerRefreshSchedule.FAILURE_BACKOFF)
         );
@@ -503,7 +552,7 @@ public class PlayerService {
         if (playerIds.isEmpty()) {
             return;
         }
-        this.playerRepository.bumpRefreshFailure(
+        this.playerRefreshRepository.bumpFailures(
                 playerIds,
                 Instant.now().plus(PlayerRefreshSchedule.FAILURE_BACKOFF)
         );
@@ -555,5 +604,5 @@ public class PlayerService {
         this.playerCapeAdoptionRepository.saveAll(toSave);
     }
 
-    public record PlayerUpdate(PlayerRow playerRow, MojangProfileToken token) {}
+    public record PlayerUpdate(DuePlayer player, MojangProfileToken token) {}
 }

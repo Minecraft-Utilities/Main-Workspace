@@ -7,6 +7,7 @@ import xyz.mcutils.backend.model.domain.cape.impl.VanillaCape;
 import xyz.mcutils.backend.model.domain.player.history.UsernameHistory;
 import xyz.mcutils.backend.model.domain.skin.Skin;
 import xyz.mcutils.backend.model.persistence.postgres.CapeRow;
+import xyz.mcutils.backend.model.persistence.postgres.PlayerRefreshStateRow;
 import xyz.mcutils.backend.model.persistence.postgres.PlayerRow;
 import xyz.mcutils.backend.service.PlayerService;
 
@@ -44,6 +45,7 @@ public class FullPlayer extends BasicPlayer {
 
     public static FullPlayer fromRow(PlayerRow playerRow, PlayerService playerService) {
         CapeRow cape = playerRow.getCape();
+        PlayerRefreshStateRow refreshState = playerService.getRefreshState(playerRow.getId());
         return FullPlayer.builder()
                 .uniqueId(playerRow.getId())
                 .username(playerRow.getUsername())
@@ -52,11 +54,11 @@ public class FullPlayer extends BasicPlayer {
                 .firstSeen(playerRow.getFirstSeen())
                 .legacyAccount(playerRow.isLegacyAccount())
                 .submittedUuids(playerRow.getSubmittedUuids())
-                .monthlyViews(playerRow.getMonthlyViews())
+                .monthlyViews(refreshState.getMonthlyViews())
                 .skinHistory(playerService.getSkinHistory(playerRow))
                 .capeHistory(playerService.getCapeHistory(playerRow))
                 .usernameHistory(playerService.getUsernameHistory(playerRow))
-                .lastUpdated(playerRow.getLastUpdated())
+                .lastUpdated(refreshState.getLastUpdated())
                 .build();
     }
 }

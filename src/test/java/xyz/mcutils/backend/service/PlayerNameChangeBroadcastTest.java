@@ -12,12 +12,12 @@ import tools.jackson.databind.json.JsonMapper;
 import xyz.mcutils.backend.model.persistence.postgres.PlayerRow;
 import xyz.mcutils.backend.model.persistence.postgres.SkinRow;
 import xyz.mcutils.backend.model.token.mojang.MojangProfileToken;
+import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRepository;
 import xyz.mcutils.backend.repository.postgres.UsernameChangeEventRepository;
 import xyz.mcutils.backend.websocket.WebSocketManager;
 import xyz.mcutils.backend.websocket.impl.NameChangeWebSocket;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,6 +42,7 @@ class PlayerNameChangeBroadcastTest {
     private final List<String> pushedMessages = Collections.synchronizedList(new ArrayList<>());
 
     private PlayerRepository playerRepository;
+    private PlayerRefreshRepository playerRefreshRepository;
     private PlayerService playerService;
 
     @BeforeAll
@@ -60,6 +61,7 @@ class PlayerNameChangeBroadcastTest {
     @BeforeEach
     void setUp() throws Exception {
         this.playerRepository = mock(PlayerRepository.class);
+        this.playerRefreshRepository = mock(PlayerRefreshRepository.class);
         UsernameChangeEventRepository usernameChangeEventRepository = mock(UsernameChangeEventRepository.class);
         SkinService skinService = mock(SkinService.class);
         CapeService capeService = mock(CapeService.class);
@@ -73,8 +75,10 @@ class PlayerNameChangeBroadcastTest {
                 usernameChangeEventRepository,
                 null,
                 null,
+                this.playerRefreshRepository,
+                null,
                 // Stands in for the @Lazy self proxy Spring injects, which owns the REQUIRES_NEW boundary.
-                new PlayerService(null, null, skinService, capeService, this.playerRepository, usernameChangeEventRepository, null, null, null, 64),
+                new PlayerService(null, null, skinService, capeService, this.playerRepository, usernameChangeEventRepository, null, null, this.playerRefreshRepository, null, null, 64),
                 64
         );
 
@@ -87,7 +91,7 @@ class PlayerNameChangeBroadcastTest {
         PlayerRow playerRow = playerRow(playerId, "OldName");
         when(this.playerRepository.findByIdForUpdate(playerId)).thenReturn(Optional.of(playerRow));
 
-        assertTrue(this.playerService.persistPlayerRefresh(new PlayerService.PlayerUpdate(playerRow, profile(playerId, "NewName"))));
+        assertTrue(this.playerService.persistPlayerRefresh(new PlayerService.PlayerUpdate(duePlayer(playerRow), profile(playerId, "NewName")), new ArrayList<>()));
 
         assertEquals(1, this.pushedMessages.size());
         assertTrue(this.pushedMessages.getFirst().contains("NewName"), this.pushedMessages.getFirst());
@@ -101,7 +105,7 @@ class PlayerNameChangeBroadcastTest {
         PlayerRow playerRow = playerRow(playerId, "SameName");
         when(this.playerRepository.findByIdForUpdate(playerId)).thenReturn(Optional.of(playerRow));
 
-        assertTrue(this.playerService.persistPlayerRefresh(new PlayerService.PlayerUpdate(playerRow, profile(playerId, "SameName"))));
+        assertTrue(this.playerService.persistPlayerRefresh(new PlayerService.PlayerUpdate(duePlayer(playerRow), profile(playerId, "SameName")), new ArrayList<>()));
 
         assertTrue(this.pushedMessages.isEmpty());
     }
@@ -130,8 +134,12 @@ class PlayerNameChangeBroadcastTest {
     private static PlayerRow playerRow(UUID playerId, String username) {
         SkinRow skin = mock(SkinRow.class);
         when(skin.getTextureId()).thenReturn("skin-texture");
-        Instant nextRefreshAt = LAST_UPDATED.plus(Duration.ofHours(6));
-        return new PlayerRow(playerId, username, false, 0, 0, skin, null, LAST_UPDATED, LAST_UPDATED, 0, nextRefreshAt);
+        return new PlayerRow(playerId, username, false, 0, skin, null, LAST_UPDATED);
+    }
+
+    private static PlayerRefreshRepository.DuePlayer duePlayer(PlayerRow row) {
+        return new PlayerRefreshRepository.DuePlayer(
+                row.getId(), row.getUsername(), false, "skin-texture", null, 0, LAST_UPDATED, 0);
     }
 
     /**
