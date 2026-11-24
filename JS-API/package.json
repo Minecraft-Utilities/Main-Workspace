@@ -1,0 +1,27 @@
+{
+  "name": "mcutils-js-api",
+  "version": "3.0.0",
+  "module": "dist/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "generate": "openapi-typescript ${OPENAPI_URL:-https://mc.fascinated.cc/api/v3/api-docs} -o src/generated/schema.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@types/bun": "latest",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Minecraft-Utilities/JS-API"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0"
+  }
+}
