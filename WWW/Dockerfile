@@ -8,18 +8,28 @@ ENV SOURCE_COMMIT=${SOURCE_COMMIT}
 
 # -----------------------------------
 
-# Install dependencies
+# Build the local JS API client (WWW depends on it via file:../JS-API)
+FROM base AS js-api
+WORKDIR /app/JS-API
+
+COPY JS-API/package.json JS-API/bun.lock ./
+RUN bun install --frozen-lockfile
+
+COPY JS-API/ ./
+RUN bun run build
+
+# -----------------------------------
+
+# Install dependencies and build the website
 FROM base AS depends
-WORKDIR /app
+WORKDIR /app/WWW
 
-# Copy workspace structure needed for dependency resolution
-COPY package.json bun.lock ./
-
-# Install dependencies
+COPY --from=js-api /app/JS-API /app/JS-API
+COPY WWW/package.json WWW/bun.lock ./
 RUN bun install --frozen-lockfile
 
 # Copy source code after dependencies are installed
-COPY . .
+COPY WWW/ ./
 
 # Build the website
 RUN bun run build
@@ -30,9 +40,9 @@ WORKDIR /app
 
 RUN apk add --no-cache curl
 
-COPY --from=depends /app/.next/standalone ./
-COPY --from=depends /app/.next/static ./.next/static
-COPY --from=depends /app/public ./public
+COPY --from=depends /app/WWW/.next/standalone ./
+COPY --from=depends /app/WWW/.next/static ./.next/static
+COPY --from=depends /app/WWW/public ./public
 
 ENV ENVIRONMENT=production
 
