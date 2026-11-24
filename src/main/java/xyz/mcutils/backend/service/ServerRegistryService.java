@@ -21,7 +21,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -137,7 +136,11 @@ public class ServerRegistryService {
     @Scheduled(cron = "0 */10 * * * *")
     @SneakyThrows
     private void updateRegistry() {
-        GHCommit ghCommit = Arrays.stream(githubClient.getRepository(REPOSITORY_OWNER + "/" + REPOSITORY_NAME).listCommits().toArray()).findFirst().orElseThrow(() -> new IllegalStateException("No commits in repository"));
+        var commits = githubClient.getRepository(REPOSITORY_OWNER + "/" + REPOSITORY_NAME).listCommits().withPageSize(1).iterator();
+        if (!commits.hasNext()) {
+            throw new IllegalStateException("No commits in repository");
+        }
+        GHCommit ghCommit = commits.next();
         String commitHash = ghCommit.getSHA1();
 
         if (lastSeenHash != null && lastSeenHash.equals(commitHash)) {
