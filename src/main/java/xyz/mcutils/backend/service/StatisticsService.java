@@ -111,9 +111,9 @@ public class StatisticsService {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void loadInitialCounts() {
-        CompletableFuture.supplyAsync(this.playerRepository::count, Main.EXECUTOR)
+        CompletableFuture.supplyAsync(this::loadPlayerCount, Main.EXECUTOR)
                 .thenAccept(this.trackedPlayerCount::set);
-        CompletableFuture.supplyAsync(this.skinRepository::count, Main.EXECUTOR)
+        CompletableFuture.supplyAsync(this::loadSkinCount, Main.EXECUTOR)
                 .thenAccept(this.trackedSkinCount::set);
         CompletableFuture.supplyAsync(this.capeRepository::count, Main.EXECUTOR)
                 .thenAccept(this.trackedCapeCount::set);
@@ -121,6 +121,23 @@ public class StatisticsService {
                 .thenAccept(this.trendingSkinCount::set);
         CompletableFuture.supplyAsync(this.usernameChangeEventRepository::countNameChanges, Main.EXECUTOR)
                 .thenAccept(this.nameChangesCount::set);
+    }
+
+    /**
+     * Seeds the player counter from {@code pg_class.reltuples}, falling back to an exact count
+     * only when the table has never been analyzed, so startup does not scan every row.
+     */
+    private long loadPlayerCount() {
+        Long estimate = this.playerRepository.estimateRowCount();
+        return estimate != null && estimate >= 0 ? estimate : this.playerRepository.count();
+    }
+
+    /**
+     * Seeds the skin counter the same way as {@link #loadPlayerCount()}.
+     */
+    private long loadSkinCount() {
+        Long estimate = this.skinRepository.estimateRowCount();
+        return estimate != null && estimate >= 0 ? estimate : this.skinRepository.count();
     }
 
     /**

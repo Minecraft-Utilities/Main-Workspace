@@ -67,6 +67,10 @@ public interface PlayerRepository extends JpaRepository<PlayerRow, UUID> {
     @Query("SELECT p.skin FROM PlayerRow p WHERE UPPER(p.username) = UPPER(:username)")
     Optional<SkinRow> findSkinByUsernameIgnoreCase(@Param("username") String username);
 
+    /** Planner row estimate from the last ANALYZE/VACUUM; -1 when the table was never analyzed. */
+    @Query(value = "SELECT reltuples::bigint FROM pg_class WHERE relname = 'players' AND relkind = 'r' LIMIT 1", nativeQuery = true)
+    Long estimateRowCount();
+
     @Modifying
     @Transactional
     @Query("UPDATE PlayerRow p SET p.submittedUuids = p.submittedUuids + :count WHERE p.id = :id")
