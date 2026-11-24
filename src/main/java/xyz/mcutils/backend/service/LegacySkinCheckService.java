@@ -145,16 +145,24 @@ public class LegacySkinCheckService {
 
         List<String> toRequeue = new ArrayList<>();
         List<String> completed = new ArrayList<>();
+        List<String> legacyIds = new ArrayList<>();
+        List<String> modernIds = new ArrayList<>();
 
         for (CheckResult result : results) {
             switch (result.outcome()) {
                 case RETRY -> toRequeue.add(result.textureId());
+                case DROP -> completed.add(result.textureId());
                 case SUCCESS -> {
-                    skinRepository.updateLegacyByTextureId(result.textureId(), result.legacy());
+                    (result.legacy() ? legacyIds : modernIds).add(result.textureId());
                     completed.add(result.textureId());
-                    log.debug("Resolved legacy status for skin {}: legacy={}", result.textureId(), result.legacy());
                 }
             }
+        }
+        if (!legacyIds.isEmpty()) {
+            skinRepository.updateLegacyByTextureIds(legacyIds, true);
+        }
+        if (!modernIds.isEmpty()) {
+            skinRepository.updateLegacyByTextureIds(modernIds, false);
         }
 
         if (!toRequeue.isEmpty()) {
@@ -185,19 +193,24 @@ public class LegacySkinCheckService {
             log.debug("Failed to decode skin texture {}: {}", textureId, e.getMessage());
             return CheckResult.success(textureId, false);
         } catch (Exception e) {
-            log.warn("Unexpected error checking legacy status for {}", textureId, e);
-            return CheckResult.retry(textureId);
+            log.warn("Unexpected error checking legacy status for {}, dropping", textureId, e);
+            return CheckResult.drop(textureId);
         }
     }
 
     private record CheckResult(String textureId, Outcome outcome, boolean legacy) {
         enum Outcome {
             SUCCESS,
-            RETRY
+            RETRY,
+            DROP
         }
 
         static CheckResult success(String textureId, boolean legacy) {
             return new CheckResult(textureId, Outcome.SUCCESS, legacy);
+        }
+
+        static CheckResult drop(String textureId) {
+            return new CheckResult(textureId, Outcome.DROP, false);
         }
 
         static CheckResult retry(String textureId) {

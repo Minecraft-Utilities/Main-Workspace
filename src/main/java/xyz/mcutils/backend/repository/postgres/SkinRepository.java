@@ -26,6 +26,6 @@ public interface SkinRepository extends JpaRepository<SkinRow, Long> {
 
     @Modifying
     @Transactional
-    @Query("UPDATE SkinRow s SET s.legacy = :legacy WHERE s.textureId = :textureId")
-    int updateLegacyByTextureId(@Param("textureId") String textureId, @Param("legacy") boolean legacy);
+    @Query("UPDATE SkinRow s SET s.legacy = :legacy WHERE s.textureId IN :textureIds")
+    int updateLegacyByTextureIds(@Param("textureIds") Collection<String> textureIds, @Param("legacy") boolean legacy);
 }
