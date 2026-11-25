@@ -9,7 +9,7 @@ export interface PlayerHeaderProps {
 
 export default function PlayerHeader({ player }: PlayerHeaderProps) {
   return (
-    <div className="flex w-full min-w-0 items-center gap-3 sm:gap-4">
+    <div className="flex w-full min-w-0 flex-col items-center gap-1">
       <Image
         src={player.skin.parts.HEAD_ISO}
         alt=""
@@ -18,9 +18,9 @@ export default function PlayerHeader({ player }: PlayerHeaderProps) {
         className="size-14 shrink-0"
         priority
       />
-      <div className="min-w-0 flex-1">
-        <PageTitle className="min-w-0">
-          <span className="block wrap-break-word">{player.username}</span>
+      <div className="w-full min-w-0">
+        <PageTitle className="min-w-0 text-center">
+          <span className="block leading-tight break-all">{player.username}</span>
         </PageTitle>
         <PlayerUuid uuid={player.uniqueId} />
       </div>

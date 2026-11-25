@@ -25,7 +25,7 @@ export default function ServerHeader({ server, edition }: ServerHeaderProps) {
         />
       )}
       <PageTitle className="min-w-0 flex-1">
-        <span className="block wrap-break-word">{name}</span>
+        <span className="block break-all">{name}</span>
       </PageTitle>
     </div>
   );
