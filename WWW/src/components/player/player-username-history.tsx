@@ -31,24 +31,26 @@ export default function PlayerUsernameHistory({ player }: PlayerUsernameHistoryP
             <TableHeader className="bg-card">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="pl-4">Name</TableHead>
-                <TableHead>Changed</TableHead>
+                <TableHead>Seen</TableHead>
                 <TableHead className="w-12 pr-4">
                   <span className="sr-only">Copy</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map(entry => {
-                const changedAt = new Date(entry.timestamp);
+              {sorted.map((entry, index) => {
+                const seenAt = new Date(entry.timestamp);
+                // The oldest name's timestamp is when the player was first recorded, not when that name was seen.
+                const isFirstName = index === sorted.length - 1;
 
                 return (
                   <TableRow key={`${entry.newUsername}-${entry.timestamp}`}>
                     <TableCell className="text-foreground pl-4 font-medium">{entry.newUsername}</TableCell>
                     <TableCell
                       className="text-muted-foreground"
-                      title={formatDate(changedAt, "Do MMMM, YYYY HH:mm a")}
+                      title={isFirstName ? undefined : formatDate(seenAt, "Do MMMM, YYYY HH:mm a")}
                     >
-                      <TimeAgo date={changedAt} rounded />
+                      {isFirstName ? null : <TimeAgo date={seenAt} rounded />}
                     </TableCell>
                     <TableCell className="pr-2 text-right">
                       <CopyButton
