@@ -40,7 +40,7 @@ export default function ServerEditionDialog({
           <DialogTitle className="text-xl">Choose server edition</DialogTitle>
           <DialogDescription className="leading-relaxed">
             Which edition is{" "}
-            <span className="text-foreground bg-accent/50 border-border rounded border px-1.5 py-0.5 font-mono font-medium">
+            <span className="text-foreground bg-accent/50 border-border rounded-md border px-1.5 py-0.5 font-mono font-medium">
               {serverAddress}
             </span>{" "}
             running?

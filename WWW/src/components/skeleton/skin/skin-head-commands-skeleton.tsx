@@ -4,11 +4,13 @@ import Card, { CardContent, CardHeader } from "@/components/ui/card";
 export default function SkinHeadCommandsSkeleton() {
   return (
     <Card>
-      <CardHeader>Head Commands (for Command Blocks)</CardHeader>
-      <CardContent className="flex flex-row gap-0">
-        <Skeleton className="h-9 w-[105px] shrink-0 rounded-r-none" />
-        <Skeleton className="min-w-0 flex-1 rounded-none" />
-        <Skeleton className="size-9 shrink-0 rounded-l-none" />
+      <CardHeader>Head commands</CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex gap-2">
+          <Skeleton className="h-9 min-w-0 flex-1" />
+          <Skeleton className="h-9 w-20 shrink-0" />
+        </div>
+        <Skeleton className="h-16 w-full" />
       </CardContent>
     </Card>
   );

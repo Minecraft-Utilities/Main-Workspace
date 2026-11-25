@@ -5,9 +5,10 @@ import { JsonLd } from "@/components/json-ld";
 import LandingQuerySearch from "@/components/landing/landing-query-search";
 import Statistics from "@/components/landing/statistics";
 import ToolCards from "@/components/landing/tool-cards";
-import { MEDIA_GRID, MediaCard } from "@/components/media-card";
-import { PageShell, PageTitle } from "@/components/page-shell";
+import { MediaCard } from "@/components/media-card";
+import { PageShell } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
+import { MediaGrid } from "@/components/ui/media-grid";
 import { ArrowRightIcon } from "lucide-react";
 import { imageUrl } from "mcutils-js-api";
 import type { Metadata } from "next";
@@ -66,47 +67,49 @@ export default async function HomePage() {
     <>
       <JsonLd id="homepage-jsonld" data={jsonLd} />
       <PageShell>
-        <PageTitle className="text-center">Minecraft Player & Server Lookup</PageTitle>
-
-        <div className="flex w-full flex-col items-center gap-5">
+        <header className="flex w-full flex-col items-center gap-6 text-center">
+          <h1 className="text-foreground max-w-[20ch] text-[28px] leading-[34px] font-[650] tracking-[-0.03em] sm:text-[32px] sm:leading-[38px] md:text-[42px] md:leading-[48px]">
+            Minecraft Player &amp; Server Lookup
+          </h1>
           <LandingQuerySearch />
-          <Statistics />
-        </div>
+        </header>
+
+        <Statistics />
 
         <ToolCards />
 
         {trendingSkins && trendingSkins.items.length > 0 && (
-          <div className="flex w-full flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-foreground text-xl font-bold tracking-tight">Trending Skins</h2>
+          <section className="flex w-full flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-foreground text-lg leading-7 font-semibold tracking-[-0.01em] whitespace-nowrap sm:text-xl">
+                Trending Skins
+              </h2>
               <Button variant="secondary" asChild>
                 <Link href="/skins/trending">
-                  View All
-                  <ArrowRightIcon className="size-4" />
+                  View all
+                  <ArrowRightIcon className="size-4" aria-hidden />
                 </Link>
               </Button>
             </div>
-            <div className={MEDIA_GRID}>
+            <MediaGrid>
               {trendingSkins.items.slice(0, 10).map(skin => (
                 <MediaCard
                   key={skin.id}
                   href={`/skin/${skin.id}`}
                   imageUrl={imageUrl(skin.parts.FULLBODY_ISO_FRONT, { size: 384 })}
-                  alt="Minecraft Skin"
+                  alt={`Minecraft skin ${skin.id}`}
                   count={skin.uniqueOwners}
                 />
               ))}
-            </div>
-          </div>
+            </MediaGrid>
+          </section>
         )}
 
-        <section className="text-muted-foreground max-w-2xl text-center text-sm leading-relaxed">
-          <p>
-            MC Utils is a free Minecraft lookup tool. Search any player to view their current skin, cape,
-            UUID, and name history. Paste a Java or Bedrock server address to instantly check whether
-            it&apos;s online, see its MOTD, and monitor live player counts: no login required.
-          </p>
-        </section>
+        <p className="text-text-secondary w-full max-w-[65ch] text-left text-sm leading-relaxed">
+          MC Utils is a free Minecraft lookup tool. Search any player to view their current skin, cape,
+          UUID and name history. Paste a Java or Bedrock server address to check whether it&apos;s online,
+          see its MOTD and watch live player counts. No login required.
+        </p>
       </PageShell>
     </>
   );

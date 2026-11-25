@@ -23,12 +23,12 @@ export default function NamesLoading() {
                   <Skeleton className="size-[22px] shrink-0 rounded-sm" />
 
                   <div className="flex min-w-0 flex-1 items-center gap-1.5 text-sm">
-                    <Skeleton className="h-4 w-24 rounded" />
+                    <Skeleton className="h-4 w-24 rounded-md" />
                     <Skeleton className="h-3 w-3 rounded-full" />
-                    <Skeleton className="h-4 min-w-0 flex-1 rounded" />
+                    <Skeleton className="h-4 min-w-0 flex-1 rounded-md" />
                   </div>
 
-                  <Skeleton className="h-3 w-14 rounded" />
+                  <Skeleton className="h-3 w-14 rounded-md" />
                 </div>
               ))}
             </div>

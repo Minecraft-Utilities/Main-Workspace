@@ -82,8 +82,12 @@ export default function PlayerSkin({ player }: PlayerSkinProps) {
 
         <div className="flex flex-wrap items-center justify-center gap-2">
           <div className="size-10 shrink-0">
-            <SimpleTooltip display="3D" className="size-full">
-              <SkinSelectionButton selected={selectedMode === "3D"} onClick={() => setSelectedMode("3D")}>
+            <SimpleTooltip display="View in 3D" className="size-full">
+              <SkinSelectionButton
+                label="View in 3D"
+                selected={selectedMode === "3D"}
+                onClick={() => setSelectedMode("3D")}
+              >
                 <p className="font-bold">3D</p>
               </SkinSelectionButton>
             </SimpleTooltip>
@@ -98,6 +102,7 @@ export default function PlayerSkin({ player }: PlayerSkinProps) {
                 <div key={key} className="size-10 shrink-0">
                   <SimpleTooltip display={SKIN_PART_LABELS[part] ?? key} className="size-full">
                     <SkinSelectionButton
+                      label={`Show ${SKIN_PART_LABELS[part] ?? part}`}
                       selected={selectedPart === part && selectedMode === "2D"}
                       onClick={() => {
                         setSelectedPart(part);
@@ -108,10 +113,10 @@ export default function PlayerSkin({ player }: PlayerSkinProps) {
                     >
                       <Image
                         src={skinPartUrl(displaySkin.parts[part], displayCape?.id, 128)}
-                        alt={SKIN_PART_LABELS[part] ?? part}
+                        alt={`${player.username} skin - ${SKIN_PART_LABELS[part] ?? part}`}
                         width={56}
                         height={56}
-                        className="h-full w-full object-contain object-center p-1.5"
+                        className="pixelated h-full w-full object-contain object-center p-1.5"
                       />
                     </SkinSelectionButton>
                   </SimpleTooltip>
@@ -150,7 +155,7 @@ function SkinPreviewImage({ src, alt }: { src: string; alt: string }) {
         onLoad={() => setLoaded(true)}
         style={{ width: "auto", height: "auto" }}
         className={cn(
-          "relative max-h-full max-w-full object-contain transition-opacity duration-300",
+          "pixelated relative max-h-full max-w-full object-contain transition-opacity duration-300",
           loaded ? "opacity-100" : "opacity-0"
         )}
       />
@@ -160,6 +165,8 @@ function SkinPreviewImage({ src, alt }: { src: string; alt: string }) {
 
 interface SkinSelectionButtonProps {
   children: React.ReactNode;
+  /** Accessible name; the tooltip attached by the caller uses the same words. */
+  label: string;
   selected: boolean;
   onClick: () => void;
   onMouseEnter?: () => void;
@@ -168,6 +175,7 @@ interface SkinSelectionButtonProps {
 
 function SkinSelectionButton({
   children,
+  label,
   selected,
   onClick,
   onMouseEnter,
@@ -175,6 +183,9 @@ function SkinSelectionButton({
 }: SkinSelectionButtonProps) {
   return (
     <button
+      type="button"
+      aria-label={label}
+      aria-pressed={selected}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}

@@ -67,16 +67,28 @@ function SkinActionButton({
   onClick: () => void;
 }) {
   const button = (
-    <Button variant={isSelected ? "default" : "outline"} size="icon" className="size-8" onClick={onClick}>
+    <Button
+      variant={isSelected ? "default" : "outline"}
+      size="icon"
+      className="size-8"
+      aria-label={tooltip}
+      aria-pressed={isSelected}
+      onClick={onClick}
+    >
       {typeof icon === "string" ? (
-        <Image className="object-contain" src={icon} alt={tooltip} width={14} height={14} draggable={false} />
+        <Image
+          className="pixelated object-contain"
+          src={icon}
+          alt=""
+          width={14}
+          height={14}
+          draggable={false}
+        />
       ) : (
         icon
       )}
     </Button>
   );
-
-  if (isSelected) return button;
 
   return (
     <SimpleTooltip display={tooltip} side="right" className="w-auto">

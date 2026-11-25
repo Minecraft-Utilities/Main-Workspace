@@ -85,7 +85,7 @@ export default function PlayerSkins({ player }: PlayerSkinsProps) {
                     width={38}
                     height={38}
                     className={cn(
-                      "rounded-sm object-cover ring-2",
+                      "pixelated rounded-sm object-cover ring-2",
                       isSelected ? "ring-primary" : "ring-transparent"
                     )}
                   />

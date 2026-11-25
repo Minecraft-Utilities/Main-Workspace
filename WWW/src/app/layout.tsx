@@ -13,10 +13,10 @@ import "./styles/globals.css";
 
 const siteFont = localFont({
   src: "./fonts/JetBrainsMono.ttf",
-  weight: "100 300",
+  weight: "100 800",
 });
 
-export const viewport: Viewport = { themeColor: "#9770FF" };
+export const viewport: Viewport = { themeColor: "#101115" };
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_BASE_URL),
   title: {
@@ -73,17 +73,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <ViewportProvider>
           <body className={`${siteFont.className} flex min-h-full w-full flex-col antialiased`}>
             <a
-              href="#main-content"
+              href="#content"
               className="bg-background text-foreground ring-ring sr-only rounded-md px-4 py-2 text-sm font-medium shadow-md focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:ring-2"
             >
               Skip to content
             </a>
             <Navbar />
-            <main id="main-content" className="relative flex min-h-0 w-full flex-1 flex-col" tabIndex={-1}>
+            <main id="content" className="relative flex min-h-0 w-full flex-1 flex-col" tabIndex={-1}>
               <Toaster />
-              <div className="z-1 flex min-h-0 flex-1 flex-col gap-2">
-                <div className="mx-auto w-full max-w-400 shrink-0 px-2">{children}</div>
-                <div className="min-h-0 flex-1" aria-hidden />
+              <div className="z-1 mx-auto flex min-h-0 w-full max-w-[1200px] flex-1 flex-col px-4 md:px-6">
+                <div className="flex min-h-0 flex-1 flex-col">{children}</div>
                 <Footer />
               </div>
             </main>

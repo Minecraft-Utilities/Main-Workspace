@@ -28,10 +28,13 @@ export interface ProfileFieldProps {
 export function ProfileField({ label, children, className, tooltip }: ProfileFieldProps) {
   return (
     <div
-      className={cn("col-span-2 grid grid-cols-subgrid items-center py-2 first:pt-0 last:pb-0", className)}
+      className={cn(
+        "group/row col-span-2 grid grid-cols-subgrid items-center py-2 first:pt-0 last:pb-0",
+        className
+      )}
     >
       <div className="flex items-center gap-1.5">
-        <span className="text-foreground font-semibold">{label}</span>
+        <span className="text-muted-foreground font-medium">{label}</span>
         {tooltip && (
           <SimpleTooltip display={tooltip} side="right">
             <Info className="text-muted-foreground/60 hover:text-muted-foreground size-3.5 shrink-0 cursor-default transition-colors" />
@@ -44,14 +47,19 @@ export function ProfileField({ label, children, className, tooltip }: ProfileFie
 }
 
 export function ProfileValue({ children }: { children: ReactNode }) {
-  return <span className="text-foreground/75 font-normal">{children}</span>;
+  return <span className="text-foreground font-normal tabular-nums">{children}</span>;
 }
 
 export function ProfileCopyableValue({ text }: { text: string }) {
   return (
     <div className="flex w-full min-w-0 items-center gap-1.5">
-      <span className="text-foreground/75 min-w-0 flex-1 truncate font-normal">{text}</span>
-      <CopyButton value={text} label="Copy" variant="inline" className="ml-auto shrink-0" />
+      <span className="text-foreground min-w-0 flex-1 truncate font-normal tabular-nums">{text}</span>
+      <CopyButton
+        value={text}
+        label="Copy"
+        variant="inline"
+        className="ml-auto shrink-0 opacity-0 transition-opacity duration-[120ms] group-hover/row:opacity-100 group-focus-within/row:opacity-100 [@media(hover:none)]:opacity-100"
+      />
     </div>
   );
 }

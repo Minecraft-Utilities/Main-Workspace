@@ -31,7 +31,7 @@ export default function TableSkeleton({ columns = 3, rows = 4 }: TableSkeletonPr
             <tr key={`row-${rowIndex}`} className="border-border/50 border-b last:border-0">
               {cellWidths.map((w, colIndex) => (
                 <td key={`cell-${rowIndex}-${colIndex}-${w}`} className="px-3 py-2">
-                  <Skeleton className={`h-4 ${w} rounded font-mono`} />
+                  <Skeleton className={`h-4 ${w} rounded-md font-mono`} />
                 </td>
               ))}
             </tr>

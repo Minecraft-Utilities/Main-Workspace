@@ -5,7 +5,7 @@ export default function ServerDnsRecordsSkeleton() {
   return (
     <section className="flex flex-col gap-4">
       <Card className="w-full min-w-0 overflow-hidden p-0">
-        <CardHeader>DNS Records</CardHeader>
+        <CardHeader>DNS records</CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4">
             <TableSkeleton columns={3} rows={4} />

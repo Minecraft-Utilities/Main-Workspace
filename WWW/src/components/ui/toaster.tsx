@@ -9,13 +9,14 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       className="toaster group"
       theme="dark"
+      style={{ fontFamily: "inherit" }}
       toastOptions={{
         classNames: {
           toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+            "group toast bg-popover text-foreground border-border-strong shadow-overlay rounded-lg border text-sm font-[inherit]",
+          description: "text-text-secondary font-[inherit]",
+          actionButton: "bg-primary text-primary-foreground",
+          cancelButton: "bg-control text-muted-foreground",
         },
       }}
       {...props}

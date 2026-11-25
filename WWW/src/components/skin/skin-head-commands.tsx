@@ -34,41 +34,38 @@ export default function SkinHeadCommands({ skin }: SkinHeadCommandsProps) {
 
   return (
     <Card>
-      <CardHeader>Head Commands (for Command Blocks)</CardHeader>
-      <CardContent className="flex flex-row items-start">
-        <Select value={selectedIndex.toString()} onValueChange={value => setSelectedIndex(Number(value))}>
-          <SelectTrigger className="h-9 w-26.25 rounded-r-none">
-            <SelectValue placeholder={commands[selectedIndex].version} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {commands.map((entry, index) => (
-                <SelectItem key={entry.version} value={index.toString()}>
-                  {entry.version}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+      <CardHeader>Head commands</CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <Select value={selectedIndex.toString()} onValueChange={value => setSelectedIndex(Number(value))}>
+            <SelectTrigger className="h-9 min-w-0 flex-1" aria-label="Minecraft version">
+              <SelectValue placeholder={commands[selectedIndex].version} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {commands.map((entry, index) => (
+                  <SelectItem key={entry.version} value={index.toString()}>
+                    {entry.version}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
+          <CopyButton value={command} label="Copy command" variant="text" className="h-9 shrink-0 px-3">
+            Copy
+          </CopyButton>
+        </div>
 
         <div
           role="textbox"
           tabIndex={0}
           aria-readonly="true"
           aria-label={`Minecraft ${commands[selectedIndex].version} head command`}
-          className="border-input focus-visible:ring-ring h-9 min-w-0 flex-1 [scrollbar-width:none] overflow-x-auto border-y px-3 py-2 font-mono text-xs whitespace-nowrap select-all focus-visible:ring-2 focus-visible:outline-none"
+          className="border-border bg-control text-text-secondary focus-visible:outline-ring max-h-28 overflow-y-auto rounded-md border px-3 py-2 font-mono text-xs break-all select-all focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           {command}
         </div>
-
-        <CopyButton
-          value={command}
-          label="Copy command"
-          variant="text"
-          className="h-9 shrink-0 rounded-l-none px-3"
-        >
-          Copy
-        </CopyButton>
       </CardContent>
     </Card>
   );

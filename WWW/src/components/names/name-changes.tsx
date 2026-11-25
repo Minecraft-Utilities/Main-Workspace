@@ -57,10 +57,10 @@ export default function NameChanges({
   }, [lastJsonMessage, queryClient, initialNameChanges]);
 
   return (
-    <Card className="w-full max-w-[980px] overflow-hidden p-0">
+    <Card className="w-full overflow-hidden p-0">
       <CardHeader className="flex items-center justify-between gap-2">
-        <span>Name History</span>
-        <span className="text-muted-foreground tracking-normal normal-case">
+        <span className="whitespace-nowrap">Name history</span>
+        <span className="text-muted-foreground truncate tracking-normal normal-case">
           Showing latest {TOTAL_NAME_CHANGES_TO_SHOW}
         </span>
       </CardHeader>

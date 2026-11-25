@@ -81,7 +81,7 @@ export function useViewport() {
 export function useIsMobile(breakpoint?: BreakpointKey): boolean {
   const { width } = useViewport();
   breakpoint = breakpoint ?? "md";
-  return width <= Breakpoint[breakpoint];
+  return width < Breakpoint[breakpoint];
 }
 
 export function useWindowDimensions() {

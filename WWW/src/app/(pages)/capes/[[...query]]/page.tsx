@@ -1,8 +1,9 @@
 import { capeRenderUrl, mcUtilsApi } from "@/common/mc-utils";
 import { buildMetadata } from "@/common/seo";
 import { EmptyState } from "@/components/empty-state";
-import { MEDIA_GRID, MediaCard } from "@/components/media-card";
-import { PageShell, PageTitle } from "@/components/page-shell";
+import { MediaCard } from "@/components/media-card";
+import { PageHeader, PageShell } from "@/components/page-shell";
+import { MediaGrid } from "@/components/ui/media-grid";
 import Pagination from "@/components/ui/pagination";
 import type { Metadata } from "next";
 
@@ -35,24 +36,24 @@ export default async function CapesPage({ params }: PageProps<"/capes/[[...query
 
   return (
     <PageShell>
-      <PageTitle>Minecraft Capes</PageTitle>
+      <PageHeader description={DESCRIPTION}>Minecraft Capes</PageHeader>
 
       {isEmpty ? (
         <EmptyState title="No capes found" description="Try again in a moment." />
       ) : (
         <div className="flex w-full flex-col gap-6">
-          <div className={MEDIA_GRID}>
+          <MediaGrid>
             {capes.items.map(cape => (
               <MediaCard
                 key={cape.id}
                 href={`/cape/${cape.id}`}
                 imageUrl={capeRenderUrl(cape.id, 384)}
-                alt={cape.name ?? "Minecraft Cape"}
-                caption={cape.name ?? "Unknown Cape"}
+                alt={cape.name ? `${cape.name} cape` : "Minecraft cape"}
+                caption={cape.name ?? "Unknown cape"}
                 count={cape.uniqueOwners}
               />
             ))}
-          </div>
+          </MediaGrid>
 
           <div className="flex justify-center">
             <Pagination

@@ -35,7 +35,7 @@ export function CopyButton({ value, label, variant = "icon", children, className
       if (resetTimer.current) {
         clearTimeout(resetTimer.current);
       }
-      resetTimer.current = setTimeout(() => setCopied(false), 2000);
+      resetTimer.current = setTimeout(() => setCopied(false), 1200);
       toast.success("Copied to your clipboard", {
         description: <p className="text-xs break-all whitespace-pre-wrap">{truncateString(value, 100)}</p>,
       });
@@ -82,7 +82,7 @@ export function CopyButton({ value, label, variant = "icon", children, className
       onClick={handleCopy}
       aria-label={label}
       className={cn(
-        "text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none",
+        "text-muted-foreground hover:bg-control-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring inline-flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium transition-colors duration-[120ms]",
         className
       )}
     >

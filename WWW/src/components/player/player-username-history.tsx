@@ -1,8 +1,9 @@
 import { formatDate } from "@/common/time-utils";
 import { CopyButton } from "@/components/copy-button";
-import SimpleTooltip from "@/components/simple-tooltip";
 import TimeAgo from "@/components/time-ago";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
+import { StateBlock } from "@/components/ui/state-block";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { FullPlayer } from "mcutils-js-api";
 
 export interface PlayerUsernameHistoryProps {
@@ -16,35 +17,52 @@ export default function PlayerUsernameHistory({ player }: PlayerUsernameHistoryP
 
   return (
     <Card className="h-fit w-full overflow-hidden p-0">
-      <CardHeader>Name History</CardHeader>
+      <CardHeader>Name history</CardHeader>
       <CardContent className="p-0">
         {sorted.length === 0 ? (
-          <p className="text-muted-foreground px-3 py-2 text-sm">No name history recorded yet.</p>
+          <StateBlock
+            variant="empty"
+            title="No name changes yet"
+            description="We haven't recorded a username change for this player."
+            className="rounded-none border-0 bg-transparent shadow-none"
+          />
         ) : (
-          <div className="divide-border/60 divide-y">
-            {sorted.map((entry, i) => (
-              <div key={i} className="flex items-center gap-2 px-3 py-1.5 text-sm">
-                <span className="text-muted-foreground w-5 shrink-0 text-right text-xs">
-                  {sorted.length - i}.
-                </span>
-                <span className="text-foreground min-w-0 flex-1 truncate font-medium">
-                  {entry.newUsername}
-                </span>
-                {i !== sorted.length - 1 && (
-                  <SimpleTooltip
-                    display={`Name change seen on ${formatDate(new Date(entry.timestamp), "Do MMMM, YYYY HH:mm a")}`}
-                  >
-                    <span className="text-muted-foreground shrink-0 text-xs">
-                      <TimeAgo date={new Date(entry.timestamp)} />
-                    </span>
-                  </SimpleTooltip>
-                )}
-                <CopyButton variant="inline" value={entry.newUsername} label={`Copy ${entry.newUsername}`}>
-                  Copy
-                </CopyButton>
-              </div>
-            ))}
-          </div>
+          <Table>
+            <TableHeader className="bg-card">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-4">Name</TableHead>
+                <TableHead>Changed</TableHead>
+                <TableHead className="w-12 pr-4">
+                  <span className="sr-only">Copy</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sorted.map(entry => {
+                const changedAt = new Date(entry.timestamp);
+
+                return (
+                  <TableRow key={`${entry.newUsername}-${entry.timestamp}`}>
+                    <TableCell className="text-foreground pl-4 font-medium">{entry.newUsername}</TableCell>
+                    <TableCell
+                      className="text-muted-foreground"
+                      title={formatDate(changedAt, "Do MMMM, YYYY HH:mm a")}
+                    >
+                      <TimeAgo date={changedAt} rounded />
+                    </TableCell>
+                    <TableCell className="pr-2 text-right">
+                      <CopyButton
+                        variant="icon"
+                        value={entry.newUsername}
+                        label={`Copy ${entry.newUsername}`}
+                        className="text-muted-foreground"
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </CardContent>
     </Card>

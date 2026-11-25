@@ -12,22 +12,15 @@ type PageButtonProps = {
   href: string;
 };
 
-function PageButton({ page: buttonPage, currentPage, isActive, children, href }: PageButtonProps) {
+function PageButton({ page: buttonPage, currentPage, children, href }: PageButtonProps) {
   const isCurrentPage = buttonPage === currentPage;
-
-  const className = cn(
-    "relative h-9 min-w-10 px-3 transition-all duration-200",
-    "whitespace-nowrap",
-    isCurrentPage && "cursor-default",
-    !isActive && "hover:shadow-sm"
-  );
 
   if (isCurrentPage) {
     return (
       <Button
-        variant={isActive ? "default" : "ghost"}
-        size="sm"
-        className={className}
+        variant="outline"
+        size="icon"
+        className="bg-selected border-selected-border text-selected-foreground hover:bg-selected hover:text-selected-foreground size-10 cursor-default rounded-sm tabular-nums"
         aria-current="page"
         aria-label={`Current page, page ${buttonPage}`}
       >
@@ -37,7 +30,12 @@ function PageButton({ page: buttonPage, currentPage, isActive, children, href }:
   }
 
   return (
-    <Button asChild variant={isActive ? "default" : "ghost"} size="sm" className={className}>
+    <Button
+      asChild
+      variant="ghost"
+      size="icon"
+      className="size-10 rounded-sm tabular-nums"
+    >
       <Link href={href} aria-label={`Go to page ${buttonPage}`} className="flex items-center justify-center">
         {children}
       </Link>
@@ -53,11 +51,7 @@ type NavigationButtonProps = {
 };
 
 function NavigationButton({ href, disabled, children, ariaLabel }: NavigationButtonProps) {
-  const className = cn(
-    "transition-all duration-200",
-    disabled && "cursor-not-allowed opacity-50 pointer-events-none",
-    !disabled && "hover:shadow-sm"
-  );
+  const className = "size-10 rounded-sm";
 
   if (disabled) {
     return (

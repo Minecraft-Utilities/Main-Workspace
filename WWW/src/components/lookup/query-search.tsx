@@ -1,5 +1,6 @@
 "use client";
 
+import { errorMessage } from "@/common/error-message";
 import { mcUtilsApi } from "@/common/mc-utils";
 import { cn, isIpOrDomain } from "@/common/utils";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
@@ -8,21 +9,33 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useDebounce } from "@uidotdev/usehooks";
 import { Clock, Loader2, Search, Server, User, X } from "lucide-react";
-import type { BasicPlayer, ErrorResponse, Platform, ServerRegistryEntry } from "mcutils-js-api";
+import {
+  imageUrl,
+  type BasicPlayer,
+  type ErrorResponse,
+  type Platform,
+  type ServerRegistryEntry,
+} from "mcutils-js-api";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import PlayerLookupEntry from "../player/player-lookup-entry";
-import ServerLookupEntry from "../server/server-lookup-entry";
 import { Button } from "../ui/button";
 import { lookupRowClassName } from "./lookup-row";
 import ServerEditionDialog from "./server-edition-dialog";
 
 export const QUERY_SEARCH_PLACEHOLDER = "Search a player, UUID, or server";
-export const QUERY_SEARCH_VALIDATION_MESSAGE = "Enter a player name, UUID, or server address";
+export const QUERY_SEARCH_VALIDATION_MESSAGE = "That's not a valid username, UUID or server address";
 
 const HISTORY_MAX = 10;
+
+const PLAYER_NAME_PATTERN = /^[A-Za-z0-9_]{1,16}$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+
+function isLookupQuery(value: string): boolean {
+  return PLAYER_NAME_PATTERN.test(value) || UUID_PATTERN.test(value) || isIpOrDomain(value);
+}
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -64,11 +77,16 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((pre
 
 type HistoryEntry = { query: string; path: string };
 
+type SearchOption =
+  | { kind: "recent"; key: string; entry: HistoryEntry }
+  | { kind: "player"; key: string; entry: BasicPlayer }
+  | { kind: "server"; key: string; entry: ServerRegistryEntry };
+
 const querySearchSchema = z.object({
   query: z
     .string()
     .transform(s => s.trim())
-    .pipe(z.string().min(1, QUERY_SEARCH_VALIDATION_MESSAGE)),
+    .pipe(z.string().refine(isLookupQuery, QUERY_SEARCH_VALIDATION_MESSAGE)),
 });
 
 type QuerySearchValues = z.infer<typeof querySearchSchema>;
@@ -104,9 +122,11 @@ export default function QuerySearch({
   const [isLookupLoading, setIsLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState<ErrorResponse | undefined>(undefined);
   const [serverPopoverOpen, setServerPopoverOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [history, setHistory] = useLocalStorage<HistoryEntry[]>("search-history", []);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const errorId = useId();
+  const listboxId = useId();
 
   const addEntry = useCallback(
     (entry: HistoryEntry) => {
@@ -114,13 +134,6 @@ export default function QuerySearch({
         const filtered = (prev ?? []).filter(h => h.path !== entry.path);
         return [entry, ...filtered].slice(0, HISTORY_MAX);
       });
-    },
-    [setHistory]
-  );
-
-  const removeEntry = useCallback(
-    (path: string) => {
-      setHistory(prev => (prev ?? []).filter(h => h.path !== path));
     },
     [setHistory]
   );
@@ -141,7 +154,7 @@ export default function QuerySearch({
     queryKey: ["serverRegistry", debouncedQuery],
     queryFn: async (): Promise<ServerRegistryEntry[]> => {
       const result = await mcUtilsApi.server().search(debouncedQuery);
-      if (result.error) throw new Error(result.error.message);
+      if (result.error) throw new Error(errorMessage(result.error));
       return result.data;
     },
     placeholderData: keepPreviousData,
@@ -167,13 +180,68 @@ export default function QuerySearch({
   const hasPlayerResults = Array.isArray(playerEntry) && playerEntry.length > 0;
   const isSearching = isServerSearchFetching || isPlayerSearchFetching;
   const searchSettled = isServerSearchSuccess && isPlayerSearchSuccess;
-  const showHistoryDropdown = !debouncedQuery && history.length > 0;
-  const serverPopoverOpenDerived =
-    (!!debouncedQuery &&
-      (hasServerResults || hasPlayerResults || isSearching) &&
-      (searchSettled || isSearching)) ||
-    showHistoryDropdown;
-  const serverPopoverOpenControlled = serverPopoverOpen && serverPopoverOpenDerived;
+  const showHistoryDropdown = !debouncedQuery && queryValue.trim().length === 0 && history.length > 0;
+
+  const recentOptions: SearchOption[] = showHistoryDropdown
+    ? history.map(entry => ({ kind: "recent" as const, key: `recent-${entry.path}`, entry }))
+    : [];
+  const playerOptions: SearchOption[] = showHistoryDropdown
+    ? []
+    : (playerEntry ?? []).map(entry => ({
+        kind: "player" as const,
+        key: `player-${entry.uniqueId}`,
+        entry,
+      }));
+  const serverOptions: SearchOption[] = showHistoryDropdown
+    ? []
+    : (serverEntries ?? []).map(entry => ({
+        kind: "server" as const,
+        key: `server-${entry.serverId}`,
+        entry,
+      }));
+  const options = [...recentOptions, ...playerOptions, ...serverOptions];
+  const highlightedIndex = activeIndex >= 0 && activeIndex < options.length ? activeIndex : -1;
+
+  const listOpen =
+    serverPopoverOpen &&
+    (showHistoryDropdown || isSearching || (searchSettled && (hasPlayerResults || hasServerResults)));
+
+  const optionId = (index: number) => `${listboxId}-option-${index}`;
+
+  useEffect(() => {
+    if (highlightedIndex < 0) {
+      return;
+    }
+    document.getElementById(optionId(highlightedIndex))?.scrollIntoView({ block: "nearest" });
+  }, [highlightedIndex, listboxId]);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName;
+      if (
+        tagName === "INPUT" ||
+        tagName === "TEXTAREA" ||
+        tagName === "SELECT" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      event.preventDefault();
+      inputRef.current?.focus();
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
+  useEffect(() => {
+    if (autoFocus) {
+      inputRef.current?.focus();
+    }
+  }, [autoFocus]);
 
   const clearError = useCallback(() => {
     setLookupError(undefined);
@@ -209,13 +277,11 @@ export default function QuerySearch({
         router.push(path);
         form.reset();
         setServerPopoverOpen(false);
-      } catch (err) {
-        throw err;
       } finally {
         setIsLookupLoading(false);
       }
     },
-    [router, form, setQueryError]
+    [router, form, setQueryError, addEntry]
   );
 
   const handleServerEdition = useCallback(
@@ -255,8 +321,27 @@ export default function QuerySearch({
     [router, form, addEntry]
   );
 
+  const selectOption = useCallback(
+    (option: SearchOption) => {
+      if (option.kind === "recent") {
+        addEntry(option.entry);
+        router.push(option.entry.path);
+        form.reset();
+        setServerPopoverOpen(false);
+        return;
+      }
+      if (option.kind === "player") {
+        handlePlayerEntryClick(option.entry);
+        return;
+      }
+      handleServerEntryClick(option.entry);
+    },
+    [addEntry, router, form, handlePlayerEntryClick, handleServerEntryClick]
+  );
+
   const submitQuery = useCallback(
     (query: string) => {
+      setActiveIndex(-1);
       form.setValue("query", query, { shouldValidate: true });
       void form.handleSubmit(onSubmit)();
     },
@@ -265,18 +350,62 @@ export default function QuerySearch({
 
   useImperativeHandle(ref, () => ({ submit: submitQuery }), [submitQuery]);
 
-  useEffect(() => {
-    if (autoFocus) {
-      inputRef.current?.focus();
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setServerPopoverOpen(true);
+      if (options.length > 0) {
+        setActiveIndex(
+          highlightedIndex < 0 || highlightedIndex >= options.length - 1 ? 0 : highlightedIndex + 1
+        );
+      }
+      return;
     }
-  }, [autoFocus]);
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setServerPopoverOpen(true);
+      if (options.length > 0) {
+        setActiveIndex(highlightedIndex <= 0 ? options.length - 1 : highlightedIndex - 1);
+      }
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (listOpen && highlightedIndex >= 0) {
+        selectOption(options[highlightedIndex]);
+        return;
+      }
+      void form.handleSubmit(onSubmit)();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      if (listOpen) {
+        event.preventDefault();
+        setServerPopoverOpen(false);
+        setActiveIndex(-1);
+      }
+    }
+  };
+
+  const fieldError = form.formState.errors.query?.message;
+  const inlineError = fieldError ?? (lookupError ? errorMessage(lookupError) : undefined);
+
+  const optionClassName = (index: number) =>
+    cn(lookupRowClassName, "cursor-pointer", index === highlightedIndex && "border-border bg-accent");
 
   return (
     <Popover
-      open={serverPopoverOpenControlled}
+      open={listOpen}
       onOpenChange={open => {
-        if (!open) setServerPopoverOpen(false);
-        else setServerPopoverOpen(true);
+        if (!open) {
+          setServerPopoverOpen(false);
+          setActiveIndex(-1);
+        } else {
+          setServerPopoverOpen(true);
+        }
       }}
     >
       <PopoverAnchor asChild>
@@ -286,7 +415,7 @@ export default function QuerySearch({
               <Controller
                 name="query"
                 control={form.control}
-                render={({ field, fieldState }) => (
+                render={({ field }) => (
                   <InputGroupInput
                     {...field}
                     ref={node => {
@@ -294,15 +423,27 @@ export default function QuerySearch({
                       inputRef.current = node;
                     }}
                     type="text"
+                    role="combobox"
+                    autoComplete="off"
+                    aria-autocomplete="list"
+                    aria-expanded={listOpen}
+                    aria-controls={listboxId}
+                    aria-activedescendant={
+                      listOpen && highlightedIndex >= 0 ? optionId(highlightedIndex) : undefined
+                    }
+                    aria-busy={isSearching}
                     placeholder={placeholder}
-                    className="text-xs md:text-sm"
-                    aria-invalid={fieldState.invalid || !!lookupError}
-                    aria-describedby={lookupError ? errorId : undefined}
+                    className="text-base md:text-sm"
+                    aria-invalid={!!inlineError}
+                    aria-describedby={inlineError ? errorId : undefined}
                     disabled={isLookupLoading}
                     onFocus={() => setServerPopoverOpen(true)}
+                    onKeyDown={handleInputKeyDown}
                     onChange={e => {
                       field.onChange(e);
-                      if (e.target.value.trim()) setServerPopoverOpen(true);
+                      setActiveIndex(-1);
+                      form.clearErrors("query");
+                      setServerPopoverOpen(true);
                       if (lookupError) clearError();
                     }}
                   />
@@ -326,8 +467,11 @@ export default function QuerySearch({
                   disabled={isLookupLoading}
                   className={cn(queryValue.length === 0 && "pointer-events-none invisible")}
                   onClick={() => {
+                    setActiveIndex(-1);
                     form.setValue("query", "");
+                    form.clearErrors("query");
                     clearError();
+                    inputRef.current?.focus();
                   }}
                 >
                   <X className="size-4" />
@@ -353,9 +497,9 @@ export default function QuerySearch({
             />
           </div>
 
-          {lookupError && (
-            <p id={errorId} role="alert" className="text-destructive px-1 text-left text-xs leading-snug">
-              {lookupError.message}
+          {inlineError && (
+            <p id={errorId} role="alert" className="text-danger px-1 text-left text-xs leading-snug">
+              {inlineError}
             </p>
           )}
         </form>
@@ -363,78 +507,125 @@ export default function QuerySearch({
       <PopoverContent
         className="max-h-72 w-(--radix-popover-trigger-width) min-w-(--radix-popover-trigger-width) overflow-y-auto p-0"
         align="start"
-        role="listbox"
         onOpenAutoFocus={e => e.preventDefault()}
+        onCloseAutoFocus={e => e.preventDefault()}
       >
-        <div className="flex flex-col gap-1 overflow-y-auto p-1">
+        <div
+          id={listboxId}
+          role="listbox"
+          aria-label="Search suggestions"
+          className="flex flex-col gap-1 p-1"
+        >
           {showHistoryDropdown ? (
-            <section className="flex flex-col gap-1" aria-label="Recent searches">
+            <div role="group" aria-label="Recent searches" className="flex flex-col gap-1">
               <div className="text-muted-foreground flex items-center gap-2 px-3 py-1.5">
                 <Clock className="size-3.5 shrink-0" aria-hidden />
-                <span className="text-xs font-medium tracking-wider uppercase">Recent</span>
+                <span className="text-xs font-medium">Recent</span>
               </div>
-              <ul className="flex flex-col gap-0.5">
-                {history.map(entry => (
-                  <li key={entry.path} className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      className={cn(lookupRowClassName, "min-w-0 flex-1")}
-                      onClick={() => {
-                        addEntry(entry);
-                        router.push(entry.path);
-                        setServerPopoverOpen(false);
-                      }}
-                    >
-                      <Clock className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
-                      <span className="min-w-0 flex-1 truncate">{entry.query}</span>
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Remove ${entry.query} from history`}
-                      className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 shrink-0 rounded p-1 outline-none focus-visible:ring-2"
-                      onClick={() => removeEntry(entry.path)}
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
+              {recentOptions.map((option, index) =>
+                option.kind === "recent" ? (
+                  <div
+                    key={option.key}
+                    id={optionId(index)}
+                    role="option"
+                    aria-selected={highlightedIndex === index}
+                    className={optionClassName(index)}
+                    onMouseDown={event => event.preventDefault()}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => selectOption(option)}
+                  >
+                    <Clock className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+                    <span className="min-w-0 flex-1 truncate">{option.entry.query}</span>
+                  </div>
+                ) : null
+              )}
+            </div>
           ) : null}
-          {!showHistoryDropdown && playerEntry && playerEntry.length > 0 ? (
-            <section className="flex flex-col gap-1" aria-label="Players">
+
+          {!showHistoryDropdown && playerOptions.length > 0 ? (
+            <div role="group" aria-label="Players" className="flex flex-col gap-1">
               <div className="text-muted-foreground flex items-center gap-2 px-3 py-1.5">
                 <User className="size-3.5 shrink-0" aria-hidden />
-                <span className="text-xs font-medium tracking-wider uppercase">Players</span>
+                <span className="text-xs font-medium">Players</span>
               </div>
-              <ul className="flex flex-col gap-0.5">
-                {playerEntry.map(entry => (
-                  <li key={entry.uniqueId}>
-                    <PlayerLookupEntry entry={entry} onSelect={handlePlayerEntryClick} />
-                  </li>
-                ))}
-              </ul>
-            </section>
+              {playerOptions.map((option, index) =>
+                option.kind === "player" ? (
+                  <div
+                    key={option.key}
+                    id={optionId(index)}
+                    role="option"
+                    aria-selected={highlightedIndex === index}
+                    className={optionClassName(index)}
+                    onMouseDown={event => event.preventDefault()}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => selectOption(option)}
+                  >
+                    <Image
+                      src={imageUrl(option.entry.skin.parts.FACE, { size: 64 })}
+                      alt=""
+                      className="size-8 shrink-0 rounded-md object-cover"
+                      width={32}
+                      height={32}
+                    />
+                    <span className="min-w-0 flex-1 truncate font-medium">{option.entry.username}</span>
+                  </div>
+                ) : null
+              )}
+            </div>
           ) : null}
-          {!showHistoryDropdown && serverEntries && serverEntries.length > 0 ? (
-            <section className="flex flex-col gap-1" aria-label="Servers">
+
+          {!showHistoryDropdown && serverOptions.length > 0 ? (
+            <div role="group" aria-label="Servers" className="flex flex-col gap-1">
               <div className="text-muted-foreground flex items-center gap-2 px-3 py-1.5">
                 <Server className="size-3.5 shrink-0" aria-hidden />
-                <span className="text-xs font-medium tracking-wider uppercase">Servers</span>
+                <span className="text-xs font-medium">Servers</span>
               </div>
-              <ul className="flex flex-col gap-0.5">
-                {serverEntries.map(entry => (
-                  <li key={entry.serverId}>
-                    <ServerLookupEntry
-                      entry={entry}
-                      handleServerEntryClick={() => handleServerEntryClick(entry)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </section>
+              {serverOptions.map((option, index) =>
+                option.kind === "server" ? (
+                  <div
+                    key={option.key}
+                    id={optionId(playerOptions.length + index)}
+                    role="option"
+                    aria-selected={highlightedIndex === playerOptions.length + index}
+                    className={optionClassName(playerOptions.length + index)}
+                    onMouseDown={event => event.preventDefault()}
+                    onMouseEnter={() => setActiveIndex(playerOptions.length + index)}
+                    onClick={() => selectOption(option)}
+                  >
+                    <span className="min-w-0 flex-1 truncate font-medium">{option.entry.displayName}</span>
+                    <span className="text-muted-foreground shrink-0 truncate text-xs">
+                      {option.entry.hostnames[0]} · {option.entry.platform}
+                    </span>
+                  </div>
+                ) : null
+              )}
+            </div>
+          ) : null}
+
+          {isSearching && options.length === 0 ? (
+            <div
+              role="presentation"
+              className="text-muted-foreground flex items-center gap-2 px-3 py-2 text-xs"
+            >
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              Searching…
+            </div>
           ) : null}
         </div>
+        {showHistoryDropdown ? (
+          <div className="border-border border-t p-1">
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground hover:bg-control-hover focus-visible:outline-ring w-full rounded-sm px-3 py-2 text-left text-xs outline-none focus-visible:outline-2 focus-visible:outline-offset-2"
+              onClick={() => {
+                setHistory([]);
+                setActiveIndex(-1);
+              }}
+            >
+              Clear recent searches
+            </button>
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

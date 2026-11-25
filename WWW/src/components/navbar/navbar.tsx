@@ -1,80 +1,147 @@
 "use client";
 
 import { cn } from "@/common/utils";
-import { AtSignIcon, ScanFaceIcon, ShirtIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { AtSignIcon, ExternalLink, GlobeIcon, MenuIcon, ScanFaceIcon, ShirtIcon } from "lucide-react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
+import { RESOURCE_LINKS, TOOL_LINKS } from "../footer";
 import SimpleLink from "../simple-link";
+import { Button } from "../ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "../ui/dialog";
 import QuerySearchNavbar from "./query-search-navbar";
 
-interface NavLinkProps {
-  name: string;
-  icon: ReactNode;
-  href: string;
-  className?: string;
-}
+const TOOL_ICONS: Record<string, LucideIcon> = {
+  "/skins": ScanFaceIcon,
+  "/capes": ShirtIcon,
+  "/names": AtSignIcon,
+  "/ip": GlobeIcon,
+};
 
-const links = [
-  <NavLink key="capes" name="Capes" icon={<ShirtIcon className="size-5" />} href="/capes" />,
-  <NavLink key="skins" name="Skins" icon={<ScanFaceIcon className="size-5" />} href="/skins" />,
-  <NavLink key="names" name="Names" icon={<AtSignIcon className="size-5" />} href="/names" />,
-];
+function isActivePath(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export default function Navbar() {
   const path = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav className="border-border bg-background/55 sticky inset-x-0 top-0 z-50 flex h-(--nav-height) w-full items-center justify-between border-b px-2 py-1 backdrop-blur-md select-none lg:justify-around lg:px-8">
-      <div className="flex w-full max-w-6xl justify-between">
-        <div className="flex items-center gap-(--spacing-md) md:gap-6">
-          {/* Branding */}
-          <SimpleLink
-            className="flex items-center gap-(--spacing-sm) hover:opacity-80 md:gap-2.5"
-            href="/"
-            draggable={false}
-          >
-            <Image width={28} height={28} className="size-7" src="/media/logo/logo.png" alt="MC Utils Logo" />
-
-            <span className="text-primary hidden text-base font-bold sm:inline sm:text-lg" aria-hidden="true">
-              MC Utils
-            </span>
+    <nav className="border-border bg-background/80 sticky inset-x-0 top-0 z-50 h-14 w-full border-b backdrop-blur-md select-none">
+      <div className="mx-auto flex h-full w-full max-w-[1200px] items-center justify-between gap-2 px-4 md:px-6">
+        <div className="flex min-w-0 items-center gap-2 md:gap-6">
+          <SimpleLink className="flex h-10 min-w-10 shrink-0 items-center gap-2" href="/" draggable={false}>
+            <Image width={28} height={28} className="size-7" src="/media/logo/logo.png" alt="MC Utils" />
+            <span className="text-foreground hidden text-base font-bold sm:inline">MC Utils</span>
           </SimpleLink>
 
-          {/* Links */}
-          <div className="flex items-center gap-0.5 sm:gap-1">{links.map(link => link)}</div>
+          <div className="hidden items-center gap-1 md:flex">
+            {TOOL_LINKS.map(link => (
+              <NavLink key={link.href} name={link.name} href={link.href} />
+            ))}
+          </div>
         </div>
 
-        {path !== "/" && <QuerySearchNavbar />}
+        <div className="flex items-center gap-1">
+          {path !== "/" && <QuerySearchNavbar />}
+
+          <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon-lg" className="size-11 md:hidden" aria-label="Open menu">
+                <MenuIcon className="size-5" aria-hidden />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="border-border bg-background shadow-overlay inset-y-0 top-0 right-0 left-auto flex h-dvh w-[min(20rem,85vw)] max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-l p-0">
+              <div className="border-border flex h-14 shrink-0 items-center border-b pr-12 pl-4">
+                <DialogTitle className="text-foreground text-sm font-semibold">Menu</DialogTitle>
+              </div>
+              <DialogDescription className="sr-only">Site navigation and resources</DialogDescription>
+
+              <nav className="flex flex-1 flex-col gap-6 overflow-y-auto p-4" aria-label="Mobile">
+                <MenuSection title="Tools">
+                  {TOOL_LINKS.map(link => {
+                    const Icon = TOOL_ICONS[link.href];
+                    return (
+                      <MenuLink
+                        key={link.href}
+                        href={link.href}
+                        active={isActivePath(path, link.href)}
+                        onNavigate={() => setMenuOpen(false)}
+                      >
+                        {Icon && <Icon className="size-4 shrink-0" aria-hidden />}
+                        {link.name}
+                      </MenuLink>
+                    );
+                  })}
+                </MenuSection>
+
+                <MenuSection title="Resources">
+                  {RESOURCE_LINKS.map(link => (
+                    <MenuLink key={link.href} href={link.href} onNavigate={() => setMenuOpen(false)}>
+                      {link.name}
+                      <ExternalLink className="text-muted-foreground ml-auto size-3.5" aria-hidden />
+                    </MenuLink>
+                  ))}
+                </MenuSection>
+              </nav>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
     </nav>
   );
 }
 
-function NavLink({ name, icon, href, className }: NavLinkProps) {
+function NavLink({ name, href }: { name: string; href: string }) {
   const pathname = usePathname();
-  const isActive = pathname && (pathname === href || (href !== "/" && pathname.startsWith(href)));
+  const active = isActivePath(pathname, href);
 
   return (
     <SimpleLink
-      className={cn(
-        "group relative flex h-9 items-center gap-1.5 rounded-md border px-2 py-1.5 text-sm font-medium transition-colors duration-150",
-        isActive
-          ? "bg-primary/10 text-primary border-primary/20"
-          : "text-muted-foreground hover:text-primary hover:bg-primary/5 border-transparent",
-        className
-      )}
       href={href}
-      target={href.startsWith("/") ? "_self" : "_blank"}
       draggable={false}
-    >
-      {icon}
-      <span className="hidden sm:flex">{name}</span>
-
-      {/* Active indicator */}
-      {isActive && (
-        <div className="bg-primary absolute -bottom-0.5 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full transition-opacity duration-200" />
+      className={cn(
+        "hover:text-foreground flex h-14 items-center px-3 text-sm font-medium transition-colors",
+        active ? "text-foreground shadow-[inset_0_-2px_0_var(--ring)]" : "text-muted-foreground"
       )}
+    >
+      {name}
+    </SimpleLink>
+  );
+}
+
+function MenuSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <h2 className="text-foreground px-3 pb-1 text-sm font-semibold">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function MenuLink({
+  href,
+  active = false,
+  onNavigate,
+  children,
+}: {
+  href: string;
+  active?: boolean;
+  onNavigate: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <SimpleLink
+      href={href}
+      draggable={false}
+      onClick={onNavigate}
+      className={cn(
+        "hover:bg-control hover:text-foreground flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
+        active ? "bg-selected text-foreground" : "text-muted-foreground"
+      )}
+    >
+      {children}
     </SimpleLink>
   );
 }

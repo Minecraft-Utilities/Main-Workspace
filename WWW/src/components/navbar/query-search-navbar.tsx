@@ -25,8 +25,8 @@ export default function QuerySearchNavbar() {
         ref={openButtonRef}
         type="button"
         variant="ghost"
-        size="icon-sm"
-        className="shrink-0 md:hidden"
+        size="icon-lg"
+        className="size-11 shrink-0 md:hidden"
         aria-label="Open search"
         aria-expanded={mobileOpen}
         onClick={() => setOpenedAtPath(pathname)}
@@ -56,7 +56,13 @@ export default function QuerySearchNavbar() {
         >
           <QuerySearch autoFocus={mobileOpen} className="w-full" />
         </div>
-        <Button type="button" variant="ghost" size="sm" className="shrink-0 md:hidden" onClick={closeSearch}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-11 shrink-0 md:hidden"
+          onClick={closeSearch}
+        >
           <XIcon className="size-4" aria-hidden />
           <span className="text-xs">Cancel</span>
         </Button>

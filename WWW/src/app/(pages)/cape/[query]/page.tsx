@@ -1,13 +1,13 @@
 import { capeRenderUrl, isNotFoundError, mcUtilsApi } from "@/common/mc-utils";
 import { absoluteUrl, breadcrumbJsonLd, buildMetadata } from "@/common/seo";
 import { BackLink } from "@/components/breadcrumb-link";
+import CapeHeader from "@/components/cape/cape-header";
 import CapePreview from "@/components/cape/cape-preview";
-import EntityDetails from "@/components/entity/entity-details";
 import EntityPlayers from "@/components/entity/entity-players";
-import { ErrorCard } from "@/components/error-card";
 import { JsonLd } from "@/components/json-ld";
-import { PageShell, PageTitle } from "@/components/page-shell";
-import SimpleLink from "@/components/simple-link";
+import { PageShell } from "@/components/page-shell";
+import { Button } from "@/components/ui/button";
+import { StateBlock } from "@/components/ui/state-block";
 import { imageUrl } from "mcutils-js-api";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -67,26 +67,24 @@ export default async function CapePage({ params }: PageProps<"/cape/[query]">) {
     if (isNotFoundError(error)) {
       notFound();
     }
+
     return (
       <PageShell>
-        <BackLink href="/capes" label="Back to capes" />
-        <ErrorCard
+        <StateBlock
+          variant="error"
           title="Cape unavailable"
-          message={
-            <>
-              We couldn&apos;t find a cape matching &quot;{query}&quot;.{" "}
-              <Link href="/capes" className="underline underline-offset-4">
-                Browse all capes
-              </Link>
-              .
-            </>
+          description="This cape could not be loaded. Try again in a moment."
+          action={
+            <Button asChild variant="secondary">
+              <Link href="/capes">Browse capes</Link>
+            </Button>
           }
         />
       </PageShell>
     );
   }
 
-  const capeName = cape.name ?? "Unknown Cape";
+  const capeName = cape.name ?? "Unknown cape";
   const jsonLd = [
     {
       "@context": "https://schema.org",
@@ -107,38 +105,24 @@ export default async function CapePage({ params }: PageProps<"/cape/[query]">) {
     <PageShell>
       <JsonLd id="cape-jsonld" data={jsonLd} />
 
-      <div className="flex w-full flex-col gap-2">
-        <BackLink href="/capes" label="Back to capes" />
-        <PageTitle
-          description={
-            cape.firstSeenUsing ? (
-              <SimpleLink
-                href={`/player/${cape.firstSeenUsing}`}
-                className="underline-offset-4 hover:underline"
-              >
-                View {cape.firstSeenUsing}&apos;s player profile
-              </SimpleLink>
-            ) : undefined
-          }
-        >
-          {capeName}
-        </PageTitle>
-      </div>
-
-      <div className="flex w-full flex-col gap-4 lg:flex-row">
-        {/* Left: preview + details */}
-        <div className="flex w-full min-w-0 flex-1 flex-col gap-4">
-          <CapePreview cape={cape} />
-          <EntityDetails kind="cape" entity={cape} />
+      <div className="flex w-full min-w-0 flex-col gap-10">
+        <div className="flex w-full min-w-0 flex-col gap-4">
+          <BackLink href="/capes" label="Back to capes" />
+          <CapeHeader cape={cape} />
         </div>
 
-        {/* Right: wearers */}
-        <div className="flex w-full min-w-0 flex-col gap-4 lg:max-w-xl">
-          <EntityPlayers
-            kind="cape"
-            accounts={cape.accountsSeenOwning ?? []}
-            currentOwners={cape.currentOwners ?? 0}
-          />
+        <div className="flex w-full min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+          <aside className="flex w-full flex-col gap-4 lg:w-90 lg:shrink-0">
+            <CapePreview cape={cape} />
+          </aside>
+
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <EntityPlayers
+              kind="cape"
+              accounts={cape.accountsSeenOwning ?? []}
+              currentOwners={cape.currentOwners ?? 0}
+            />
+          </div>
         </div>
       </div>
     </PageShell>

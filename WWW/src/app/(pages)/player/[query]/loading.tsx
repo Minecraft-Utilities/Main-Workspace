@@ -1,6 +1,5 @@
 import { PageShell } from "@/components/page-shell";
 import PlayerCapesCardSkeleton from "@/components/skeleton/player/player-capes-card-skeleton";
-import PlayerDetailsSkeleton from "@/components/skeleton/player/player-details-skeleton";
 import PlayerHeaderSkeleton from "@/components/skeleton/player/player-header-skeleton";
 import PlayerSkinCardSkeleton from "@/components/skeleton/player/player-skin-card-skeleton";
 import PlayerSkinsCardSkeleton from "@/components/skeleton/player/player-skins-card-skeleton";
@@ -12,17 +11,16 @@ export default function PlayerLoading() {
       <div className="flex w-full min-w-0 flex-col gap-10" aria-live="polite" aria-busy="true">
         <PlayerHeaderSkeleton />
 
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-          <section className="flex w-full flex-col gap-4 lg:w-90 lg:shrink-0">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+          <aside className="flex w-full flex-col gap-4 lg:w-90 lg:shrink-0">
             <PlayerSkinCardSkeleton />
+          </aside>
+
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <PlayerUsernameHistorySkeleton />
             <PlayerSkinsCardSkeleton />
             <PlayerCapesCardSkeleton />
-          </section>
-
-          <aside className="flex min-w-0 flex-1 flex-col gap-4">
-            <PlayerDetailsSkeleton />
-            <PlayerUsernameHistorySkeleton />
-          </aside>
+          </div>
         </div>
       </div>
     </PageShell>

@@ -14,6 +14,7 @@ const STATIC_ENTRIES: MetadataRoute.Sitemap = [
   { url: `${BASE_URL}/skins`, changeFrequency: "daily", priority: 0.9 },
   { url: `${BASE_URL}/capes`, changeFrequency: "weekly", priority: 0.8 },
   { url: `${BASE_URL}/names`, changeFrequency: "hourly", priority: 0.7 },
+  { url: `${BASE_URL}/ip`, changeFrequency: "monthly", priority: 0.5 },
 ];
 
 async function collectCapes(): Promise<MetadataRoute.Sitemap> {

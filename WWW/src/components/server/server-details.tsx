@@ -1,4 +1,4 @@
-import { ProfileCopyableValue, ProfileField, ProfileFields, ProfileValue } from "@/components/profile-field";
+import { KeyValueList, type KeyValueGroup } from "@/components/ui/key-value-list";
 import type { BedrockServer, JavaServer, Platform } from "mcutils-js-api";
 import TimeAgo from "../time-ago";
 import Card, { CardContent, CardHeader } from "../ui/card";
@@ -12,96 +12,67 @@ export function ServerDetails({ server, edition }: ServerDetailsProps) {
   const javaServer = server as JavaServer;
   const bedrockServer = server as BedrockServer;
 
+  const connection: KeyValueGroup = {
+    title: "Connection",
+    items: [
+      { label: "Hostname", value: server.hostname, copyValue: server.hostname },
+      { label: "IP address", value: server.ip, copyValue: server.ip },
+      { label: "Port", value: String(server.port) },
+      {
+        label: "Version",
+        value:
+          edition === "JAVA"
+            ? `${javaServer.version.protocolName ?? javaServer.version.name} (${javaServer.version.protocol})`
+            : bedrockServer.version.name,
+      },
+      ...(edition === "JAVA" && javaServer.modded
+        ? [{ label: "Mods", value: `${javaServer.forgeData?.mods?.length ?? 0} mods` }]
+        : []),
+      ...(edition === "BEDROCK" && bedrockServer.gamemode?.name
+        ? [{ label: "Gamemode", value: bedrockServer.gamemode.name }]
+        : []),
+      {
+        label: "SRV record",
+        value: server.records?.some(record => record.type === "SRV") ? "Yes" : "No",
+      },
+      ...(server.location?.country ? [{ label: "Location", value: server.location.country }] : []),
+      {
+        label: "Cached",
+        value: server.cached ? <TimeAgo date={new Date(server.cachedTime)} /> : "No",
+      },
+    ],
+  };
+
+  const chat: KeyValueGroup = {
+    title: "Chat",
+    items: [
+      {
+        label: "Prevents chat reports",
+        tooltip:
+          "When enabled, the server hides the report option for players by declaring that chat cannot be reported to Mojang.",
+        value: javaServer.preventsChatReports ? "Yes" : "No",
+      },
+      {
+        label: "Enforces secure chat",
+        tooltip:
+          "When enabled, the server only accepts clients that support signed chat, so other players can verify who sent each message.",
+        value: javaServer.enforcesSecureChat ? "Yes" : "No",
+      },
+      {
+        label: "Previews chat",
+        tooltip:
+          "When enabled, the server receives chat messages as they are typed and sends back a styled preview. Messages are transmitted to the server before being sent.",
+        value: javaServer.previewsChat ? "Yes" : "No",
+      },
+    ],
+  };
+
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex w-full min-w-0 flex-col gap-4">
       <Card className="w-full min-w-0 overflow-hidden p-0">
         <CardHeader>Details</CardHeader>
-        <CardContent className="p-3 pt-2">
-          <ProfileFields>
-            <ProfileField label="Hostname">
-              <ProfileCopyableValue text={server.hostname} />
-            </ProfileField>
-
-            <ProfileField label="IP address">
-              <ProfileCopyableValue text={server.ip} />
-            </ProfileField>
-
-            <ProfileField label="Port">
-              <ProfileValue>{String(server.port)}</ProfileValue>
-            </ProfileField>
-
-            {edition === "JAVA" && (
-              <>
-                {javaServer.version && (
-                  <ProfileField label="Protocol version">
-                    <ProfileValue>
-                      {`${javaServer.version.protocolName ?? javaServer.version.name} (${javaServer.version.protocol})`}
-                    </ProfileValue>
-                  </ProfileField>
-                )}
-                <ProfileField label="Blocked by Mojang">
-                  <ProfileValue>{javaServer.mojangBlocked ? "Yes" : "No"}</ProfileValue>
-                </ProfileField>
-                {javaServer.modded && (
-                  <ProfileField label="Modded server">
-                    <ProfileValue>{`${javaServer.forgeData?.mods?.length ?? 0} mods`}</ProfileValue>
-                  </ProfileField>
-                )}
-                <div className="text-muted-foreground border-border/60 col-span-2 border-b pt-3 pb-1 text-xs font-semibold tracking-wider uppercase">
-                  Chat
-                </div>
-                <ProfileField
-                  label="Prevents chat reports"
-                  tooltip="When enabled, the server hides the report option for players by declaring that chat cannot be reported to Mojang."
-                >
-                  <ProfileValue>{javaServer.preventsChatReports ? "Yes" : "No"}</ProfileValue>
-                </ProfileField>
-                <ProfileField
-                  label="Enforces secure chat"
-                  tooltip="When enabled, the server only accepts clients that support signed chat, so other players can verify who sent each message."
-                >
-                  <ProfileValue>{javaServer.enforcesSecureChat ? "Yes" : "No"}</ProfileValue>
-                </ProfileField>
-                <ProfileField
-                  label="Previews chat"
-                  tooltip="When enabled, the server receives chat messages as they are typed and sends back a styled preview. This allows custom formatting like emojis or chat colors, but messages are transmitted to the server before being sent."
-                >
-                  <ProfileValue>{javaServer.previewsChat ? "Yes" : "No"}</ProfileValue>
-                </ProfileField>
-              </>
-            )}
-
-            {edition === "BEDROCK" && (
-              <>
-                {bedrockServer.version?.name && (
-                  <ProfileField label="Version">
-                    <ProfileValue>{bedrockServer.version.name}</ProfileValue>
-                  </ProfileField>
-                )}
-                {bedrockServer.gamemode?.name && (
-                  <ProfileField label="Gamemode">
-                    <ProfileValue>{bedrockServer.gamemode.name}</ProfileValue>
-                  </ProfileField>
-                )}
-              </>
-            )}
-
-            <ProfileField label="SRV record">
-              <ProfileValue>{server.records?.some(r => r.type === "SRV") ? "Yes" : "No"}</ProfileValue>
-            </ProfileField>
-
-            {server.location?.country && (
-              <ProfileField label="Location">
-                <ProfileValue>{server.location.country}</ProfileValue>
-              </ProfileField>
-            )}
-
-            <ProfileField label="Cached">
-              <ProfileValue>
-                {server.cached ? <TimeAgo date={new Date(server.cachedTime)} /> : "No"}
-              </ProfileValue>
-            </ProfileField>
-          </ProfileFields>
+        <CardContent>
+          <KeyValueList groups={edition === "JAVA" ? [connection, chat] : [connection]} />
         </CardContent>
       </Card>
     </section>

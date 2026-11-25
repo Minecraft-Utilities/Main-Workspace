@@ -1,6 +1,5 @@
 import type { BedrockServer, JavaServer, Platform } from "mcutils-js-api";
 import Image from "next/image";
-import Card, { CardContent } from "../ui/card";
 
 interface ServerMotdProps {
   server: JavaServer | BedrockServer;
@@ -8,23 +7,22 @@ interface ServerMotdProps {
 }
 
 export default function ServerMotd({ server, edition }: ServerMotdProps) {
+  const preview = edition === "JAVA" ? (server as JavaServer).motd?.preview : undefined;
+
+  if (!preview) {
+    return null;
+  }
+
   return (
-    edition === "JAVA" &&
-    (server as JavaServer).motd?.preview && (
-      <section className="flex flex-col gap-4">
-        <Card className="h-fit items-center overflow-hidden p-0">
-          <CardContent className="flex items-center justify-center">
-            <Image
-              src={(server as JavaServer).motd!.preview!}
-              alt={`${server.hostname} MOTD preview`}
-              width={768}
-              height={87}
-              className="w-auto rounded-md object-contain"
-              priority
-            />
-          </CardContent>
-        </Card>
-      </section>
-    )
+    <section className="bg-stage border-border shadow-surface w-full overflow-hidden rounded-lg border bg-[radial-gradient(circle_at_50%_40%,var(--stage-highlight),var(--stage)_75%)]">
+      <Image
+        src={preview}
+        alt={`${server.hostname} MOTD preview`}
+        width={768}
+        height={87}
+        className="pixelated h-auto w-full object-contain"
+        priority
+      />
+    </section>
   );
 }

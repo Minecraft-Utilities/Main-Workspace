@@ -1,14 +1,14 @@
 import { mcUtilsApi } from "@/common/mc-utils";
 import { buildMetadata } from "@/common/seo";
 import { EmptyState } from "@/components/empty-state";
-import { MEDIA_GRID, MediaCard } from "@/components/media-card";
-import { PageShell, PageTitle } from "@/components/page-shell";
+import { MediaCard } from "@/components/media-card";
+import { PageHeader, PageShell } from "@/components/page-shell";
 import { isSkinSort, SKIN_SORT_OPTIONS } from "@/components/skins/skin-sort-options";
-import { Button } from "@/components/ui/button";
+import { MediaGrid } from "@/components/ui/media-grid";
 import Pagination from "@/components/ui/pagination";
-import { imageUrl } from "mcutils-js-api";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { imageUrl, type SkinSort } from "mcutils-js-api";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +28,13 @@ function parseListingQuery(query: string[] | undefined) {
   };
 }
 
+const sortItems = (Object.keys(SKIN_SORT_OPTIONS) as SkinSort[]).map(key => ({
+  value: key,
+  label: SKIN_SORT_OPTIONS[key].label,
+  icon: SKIN_SORT_OPTIONS[key].icon,
+  href: `/skins/${key.toLowerCase()}`,
+}));
+
 export async function generateMetadata(props: PageProps<"/skins/[[...query]]">): Promise<Metadata> {
   const { query } = await props.params;
   const { sort, hasSort, page } = parseListingQuery(query);
@@ -46,52 +53,31 @@ export default async function SkinsPage({ params }: PageProps<"/skins/[[...query
 
   return (
     <PageShell>
-      <PageTitle>Minecraft Skins</PageTitle>
+      <PageHeader description={DESCRIPTION}>Minecraft Skins</PageHeader>
 
       {isEmpty ? (
         <EmptyState title="No skins found" description="Try again in a moment." />
       ) : (
         <div className="flex w-full flex-col gap-6">
-          <div className="flex flex-col items-start gap-2">
-            <h2
-              id="skin-sort-label"
-              className="text-muted-foreground text-xs font-medium tracking-wider uppercase"
-            >
-              Sort by
-            </h2>
-            <div
-              role="group"
-              aria-labelledby="skin-sort-label"
-              className="border-border bg-background/60 inline-flex flex-wrap items-center gap-1 rounded-md border p-1 shadow-sm"
-            >
-              {Object.entries(SKIN_SORT_OPTIONS).map(([key, option]) => (
-                <Button
-                  key={key}
-                  asChild
-                  size="sm"
-                  variant={sort === key ? "default" : "ghost"}
-                  aria-current={sort === key ? true : undefined}
-                >
-                  <Link href={`/skins/${key.toLowerCase()}`}>
-                    {option.icon}
-                    {option.label}
-                  </Link>
-                </Button>
-              ))}
-            </div>
-          </div>
+          <SegmentedControl items={sortItems} value={sort} label="Sort skins" className="sm:self-start" />
 
-          <div className={MEDIA_GRID}>
-            {skins.items.map(skin => (
-              <MediaCard
-                key={skin.id}
-                href={`/skin/${skin.id}`}
-                imageUrl={imageUrl(skin.parts.FULLBODY_ISO_FRONT, { size: 384 })}
-                alt="Minecraft Skin"
-                count={skin.uniqueOwners}
-              />
+          <MediaGrid>
+            {skins.items.map((skin, index) => (
+              <div key={skin.id} className="relative">
+                <MediaCard
+                  href={`/skin/${skin.id}`}
+                  imageUrl={imageUrl(skin.parts.FULLBODY_ISO_FRONT, { size: 384 })}
+                  alt={`Minecraft skin ${skin.id}`}
+                  count={skin.uniqueOwners}
+                />
+                {sort === "TOP" ? (
+                  <span className="bg-highlight text-background pointer-events-none absolute top-2 left-2 rounded-sm px-1.5 py-0.5 text-[11px] leading-4 font-semibold tabular-nums">
+                    #{index + 1 + (page - 1) * skins.itemsPerPage}
+                  </span>
+                ) : null}
+              </div>
             ))}
-          </div>
+          </MediaGrid>
 
           <div className="flex justify-center">
             <Pagination

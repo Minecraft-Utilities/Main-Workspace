@@ -1,5 +1,6 @@
 import type { DnsRecord, SrvRecord } from "mcutils-js-api";
 import Card, { CardContent, CardHeader } from "../ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 function isSrvRecord(record: DnsRecord): record is SrvRecord {
   return record.type === "SRV";
@@ -10,53 +11,47 @@ export interface ServerDnsRecordsProps {
 }
 
 export default function ServerDnsRecords({ records }: ServerDnsRecordsProps) {
+  if (!records || records.length === 0) {
+    return null;
+  }
+
   return (
-    records &&
-    records.length > 0 && (
-      <section className="flex flex-col gap-4">
-        <Card className="w-full min-w-0 overflow-hidden p-0">
-          <CardHeader>DNS Records</CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4">
-              <div className="border-border min-w-0 overflow-x-auto rounded-lg border [-webkit-overflow-scrolling:touch]">
-                <table className="w-full min-w-[320px] text-left text-sm">
-                  <thead>
-                    <tr className="border-border bg-muted/30 border-b">
-                      <th className="text-muted-foreground px-3 py-2 font-medium whitespace-nowrap">
-                        Hostname
-                      </th>
-                      <th className="text-muted-foreground px-3 py-2 font-medium whitespace-nowrap">Type</th>
-                      <th className="text-muted-foreground px-3 py-2 font-medium whitespace-nowrap">Data</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {records.map(record => {
-                      const rowKey = isSrvRecord(record)
-                        ? `srv-${record.name}-${record.port}-${record.target}`
-                        : `record-${record.name}-${record.type}-${record.address ?? ""}`;
-                      return (
-                        <tr key={rowKey} className="border-border/50 border-b last:border-0">
-                          <td className="text-foreground px-3 py-2 font-mono whitespace-nowrap">
-                            {isSrvRecord(record) ? record.name : (record.name ?? "Unknown")}
-                          </td>
-                          <td className="text-foreground px-3 py-2 font-mono whitespace-nowrap">
-                            {record.type}
-                          </td>
-                          <td className="text-muted-foreground px-3 py-2 font-mono whitespace-nowrap">
-                            {isSrvRecord(record)
-                              ? `${record.priority} ${record.weight} ${record.port} ${record.target}`
-                              : (record.address ?? "Unknown")}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-    )
+    <section className="flex w-full min-w-0 flex-col gap-4">
+      <Card className="w-full min-w-0 overflow-hidden p-0">
+        <CardHeader>DNS records</CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader className="bg-card">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-4">Hostname</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="pr-4">Data</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {records.map(record => {
+                const rowKey = isSrvRecord(record)
+                  ? `srv-${record.name}-${record.port}-${record.target}`
+                  : `record-${record.name}-${record.type}-${record.address ?? ""}`;
+
+                return (
+                  <TableRow key={rowKey}>
+                    <TableCell className="text-foreground pl-4 font-mono">
+                      {record.name ?? "Unknown"}
+                    </TableCell>
+                    <TableCell className="text-foreground font-mono">{record.type}</TableCell>
+                    <TableCell className="text-muted-foreground pr-4 font-mono">
+                      {isSrvRecord(record)
+                        ? `${record.priority} ${record.weight} ${record.port} ${record.target}`
+                        : (record.address ?? "Unknown")}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </section>
   );
 }

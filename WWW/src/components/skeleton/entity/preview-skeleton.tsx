@@ -1,12 +1,12 @@
 import Skeleton from "@/components/skeleton/ui/skeleton";
-import Card, { CardContent } from "@/components/ui/card";
+import Card from "@/components/ui/card";
 
 export default function PreviewSkeleton() {
   return (
-    <Card className="min-h-105 w-full">
-      <CardContent className="flex items-center justify-center p-4">
+    <Card className="w-full overflow-hidden p-0">
+      <div className="bg-stage flex min-h-105 items-center justify-center bg-[radial-gradient(circle_at_50%_42%,var(--stage-highlight),var(--stage)_72%)] p-4">
         <Skeleton className="h-96 w-full max-w-64" />
-      </CardContent>
+      </div>
     </Card>
   );
 }

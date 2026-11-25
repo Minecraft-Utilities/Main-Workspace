@@ -87,7 +87,7 @@ export default function PlayerCapes({ player }: PlayerCapesProps) {
                     width={64 * CAPE_ASPECT_RATIO}
                     height={64}
                     className={cn(
-                      "h-16 rounded-sm object-cover ring-2",
+                      "pixelated h-16 rounded-sm object-cover ring-2",
                       isSelected ? "ring-primary" : "ring-transparent"
                     )}
                   />

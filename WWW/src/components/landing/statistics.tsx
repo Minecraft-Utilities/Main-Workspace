@@ -1,10 +1,8 @@
 "use client";
 
 import { websocketUrl } from "@/common/websocket-url";
-import { ShirtIcon, UserIcon } from "lucide-react";
 import CountUp from "react-countup";
 import useWebSocket from "react-use-websocket";
-import { Tooltip } from "../ui/tooltip";
 
 export default function Statistics() {
   const { lastJsonMessage } = useWebSocket(websocketUrl("ws/statistics"), {
@@ -14,27 +12,21 @@ export default function Statistics() {
   });
   const statistics = lastJsonMessage as { playersTracked: number; trackedSkins: number } | null;
 
+  const stats = [
+    { label: "Players tracked", value: statistics?.playersTracked },
+    { label: "Skins tracked", value: statistics?.trackedSkins },
+  ];
+
   return (
-    <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
-      <Tooltip content={<p>The number of Java Minecraft profiles stored in our database.</p>}>
-        <span className="flex items-center gap-1.5">
-          <UserIcon className="text-primary size-4" aria-hidden />
-          <span>Stored Profiles</span>
-          <span className="text-foreground font-semibold tabular-nums">
-            {statistics ? <CountUp end={statistics.playersTracked} preserveValue /> : "..."}
-          </span>
-        </span>
-      </Tooltip>
-      <span className="bg-border hidden h-4 w-px sm:block" aria-hidden />
-      <Tooltip content={<p>The number of unique skins stored in our database.</p>}>
-        <span className="flex items-center gap-1.5">
-          <ShirtIcon className="text-primary size-4" aria-hidden />
-          <span>Skin Collection</span>
-          <span className="text-foreground font-semibold tabular-nums">
-            {statistics ? <CountUp end={statistics.trackedSkins} preserveValue /> : "..."}
-          </span>
-        </span>
-      </Tooltip>
-    </div>
+    <dl className="flex flex-wrap items-start justify-center gap-x-12 gap-y-4">
+      {stats.map(stat => (
+        <div key={stat.label} className="flex flex-col-reverse items-center gap-0.5">
+          <dt className="text-muted-foreground text-[13px] font-medium">{stat.label}</dt>
+          <dd className="text-foreground text-xl font-medium tabular-nums">
+            {stat.value !== undefined ? <CountUp end={stat.value} preserveValue /> : "..."}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
