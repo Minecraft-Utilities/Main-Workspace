@@ -121,7 +121,7 @@ public class ServerRegistryService {
                     continue;
                 }
                 String serverId = manifest.get("serverId").getAsString();
-                result.add(new ServerRegistryEntry(serverId, manifest.get("displayName").getAsString(), manifest.get("hostnames").getAsJsonArray().asList().stream().map(JsonElement::getAsString).toList(), manifest.get("wildcardHostnames").getAsJsonArray().asList().stream().map(JsonElement::getAsString).toList(), "https://github.com/%s/%s/blob/main/minecraft_servers/%s/background.webp?raw=true".formatted(REPOSITORY_OWNER, REPOSITORY_NAME, serverId), EnumUtils.getEnumConstant(Platform.class, manifest.get("platform").getAsString())));
+                result.add(new ServerRegistryEntry(serverId, manifest.get("displayName").getAsString(), manifest.get("hostnames").getAsJsonArray().asList().stream().map(JsonElement::getAsString).toList(), manifest.get("wildcardHostnames").getAsJsonArray().asList().stream().map(JsonElement::getAsString).toList(), "https://raw.githubusercontent.com/%s/%s/refs/heads/main/minecraft_servers/%s/background.webp".formatted(REPOSITORY_OWNER, REPOSITORY_NAME, serverId), EnumUtils.getEnumConstant(Platform.class, manifest.get("platform").getAsString())));
             }
         } catch (IOException e) {
             log.warn("Failed to extract manifests from zip", e);
