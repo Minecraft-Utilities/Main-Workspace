@@ -5,7 +5,6 @@ import { EntityHeader } from "@/components/ui/entity-header";
 import type { Skin } from "mcutils-js-api";
 import { imageUrl } from "mcutils-js-api";
 import Image from "next/image";
-import Link from "next/link";
 
 export interface SkinHeaderProps {
   skin: Skin;
@@ -28,21 +27,6 @@ export default function SkinHeader({ skin }: SkinHeaderProps) {
         />
       }
       title={name}
-      description={
-        skin.firstSeenUsing ? (
-          <>
-            First seen using{" "}
-            <Link
-              href={`/player/${encodeURIComponent(skin.firstSeenUsing)}`}
-              className="text-link hover:underline"
-            >
-              {skin.firstSeenUsing}
-            </Link>
-          </>
-        ) : (
-          "Minecraft skin"
-        )
-      }
       stats={[
         {
           label: "Owners",
