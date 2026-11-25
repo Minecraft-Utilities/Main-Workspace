@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.RateLimiter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cache.CacheManager;
+import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
@@ -44,6 +45,7 @@ public class LegacySkinCheckService {
     private final RedisQueue checkQueue;
     private final SkinRepository skinRepository;
     private final WebRequest webRequest;
+    private final StorageService storageService;
     private final CacheManager cacheManager;
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final String texturesEndpoint;
@@ -52,6 +54,7 @@ public class LegacySkinCheckService {
             RedisQueueFactory queueFactory,
             SkinRepository skinRepository,
             WebRequest webRequest,
+            StorageService storageService,
             CacheManager cacheManager,
             @Value("${mc-utils.mojang.textures-url:https://textures.minecraft.net}") String texturesEndpoint
     ) {
@@ -59,6 +62,7 @@ public class LegacySkinCheckService {
         this.checkQueue = queueFactory.getQueue(QUEUE_NAME);
         this.skinRepository = skinRepository;
         this.webRequest = webRequest;
+        this.storageService = storageService;
         this.cacheManager = cacheManager;
     }
 
@@ -182,6 +186,10 @@ public class LegacySkinCheckService {
             }
             BufferedImage image = ImageUtils.decodeImage(bytes);
             boolean legacy = image.getWidth() == 64 && image.getHeight() == 32;
+            String fileName = textureId + ".png";
+            if (!storageService.exists(StorageService.Bucket.SKINS, fileName)) {
+                storageService.upload(StorageService.Bucket.SKINS, fileName, MediaType.IMAGE_PNG_VALUE, bytes);
+            }
             return CheckResult.success(textureId, legacy);
         } catch (RateLimitException e) {
             log.debug("Rate limited checking legacy status for {}, will retry", textureId);
