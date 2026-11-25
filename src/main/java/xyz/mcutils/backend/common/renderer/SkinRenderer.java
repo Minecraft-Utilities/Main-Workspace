@@ -23,16 +23,24 @@ public abstract class SkinRenderer extends Renderer<Skin> {
         }
         int sh = c.height();
         int sx = c.x();
+        if (slim && part.isBackArm()) {
+            // Slim arms keep a 4px inner side face, so the 3px back face starts one pixel left of the wide layout.
+            sx--;
+        }
         int sy = c.y();
         g.drawImage(skinImage, dx, dy, dx + dw, dy + dh, sx, sy, sx + sw, sy + sh, null);
         if (renderOverlays) {
             for (PlayerModelCoordinates.Skin overlay : part.getOverlays()) {
                 Coordinates oc = overlay.getCoordinates();
                 int ow = oc.width();
+                int ox = oc.x();
                 if (slim && overlay.isArm()) {
                     ow--;
                 }
-                g.drawImage(skinImage, dx, dy, dx + dw, dy + dh, oc.x(), oc.y(), oc.x() + ow, oc.y() + oc.height(), null);
+                if (slim && overlay.isBackArm()) {
+                    ox--;
+                }
+                g.drawImage(skinImage, dx, dy, dx + dw, dy + dh, ox, oc.y(), ox + ow, oc.y() + oc.height(), null);
             }
         }
     }

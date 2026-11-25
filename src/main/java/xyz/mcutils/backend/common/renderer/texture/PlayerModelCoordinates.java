@@ -48,6 +48,10 @@ public final class PlayerModelCoordinates {
             return this == LEFT_ARM_FRONT || this == RIGHT_ARM_FRONT || this == LEFT_ARM_OVERLAY_FRONT || this == RIGHT_ARM_OVERLAY_FRONT;
         }
 
+        public boolean isBackArm() {
+            return this == LEFT_ARM_BACK || this == RIGHT_ARM_BACK || this == LEFT_ARM_OVERLAY_BACK || this == RIGHT_ARM_OVERLAY_BACK;
+        }
+
         /**
          * Arm parts (front or back) that use 3px width when slim.
          */
