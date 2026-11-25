@@ -1,3 +1,4 @@
+import { getRealIp } from "@/common/ip-utils";
 import { buildMetadata } from "@/common/seo";
 import Background from "@/components/background";
 import IpSearch from "@/components/ip/ip-search";
@@ -16,15 +17,8 @@ export const dynamic = "force-dynamic";
 
 const EXAMPLES = ["8.8.8.8", "1.1.1.1", "2606:4700:4700::1111"];
 
-/** Loopback addresses say nothing useful about the visitor, so they never get a "Your IP" chip. */
-function isLoopback(ip: string): boolean {
-  const address = ip.toLowerCase();
-  return address === "::1" || address.startsWith("127.") || address.startsWith("::ffff:127.");
-}
-
 export default async function IpIndexPage() {
-  const forwarded = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim();
-  const yourIp = forwarded && !isLoopback(forwarded) ? forwarded : undefined;
+  const yourIp = getRealIp(await headers());
   const examples = Array.from(new Set([...(yourIp ? [yourIp] : []), ...EXAMPLES]));
 
   return (
