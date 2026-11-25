@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import xyz.mcutils.backend.Main;
 import xyz.mcutils.backend.common.FutureUtils;
 import xyz.mcutils.backend.common.UUIDUtils;
+import xyz.mcutils.backend.exception.impl.RateLimitException;
 import xyz.mcutils.backend.metric.impl.player.PreviousUsernameChecksMetric;
 import xyz.mcutils.backend.model.token.mojang.MojangUsernameToUuidToken;
 import xyz.mcutils.backend.repository.postgres.PreviousUsernameCheckRepository;
@@ -36,9 +37,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @SuppressWarnings("UnstableApiUsage")
 public class PreviousUsernameResolveService {
 
-    private static final int BATCH_SIZE = 1000;
+    private static final int BATCH_SIZE = 2000;
     private static final int CHUNK_SIZE = 10;
-    private static final int MAX_CONCURRENT_CHUNKS = 10;
+    private static final double MIN_REQUESTS_PER_SECOND = 1;
+    private static final double RATE_INCREMENT = 0.05;
+    private static final long SLOW_DOWN_COOLDOWN_NANOS = Duration.ofSeconds(2).toNanos();
     private static final Duration EMPTY_WAIT = Duration.ofMinutes(1);
     private static final Duration FAILURE_BACKOFF = Duration.ofHours(1);
     private static final Duration WAIT_POLL = Duration.ofSeconds(1);
@@ -47,8 +50,10 @@ public class PreviousUsernameResolveService {
     private final MojangService mojangService;
     private final PlayerService playerService;
     private final PlayerSubmitService playerSubmitService;
-    private final MojangRateLimiter mojangRateLimiter;
     private final RateLimiter requestRateLimiter;
+    private final double maxRequestsPerSecond;
+    private final Object rateLock = new Object();
+    private long lastSlowDownNanos = System.nanoTime() - SLOW_DOWN_COOLDOWN_NANOS;
     private final boolean enabled;
     private final AtomicBoolean running = new AtomicBoolean(true);
 
@@ -57,17 +62,16 @@ public class PreviousUsernameResolveService {
             MojangService mojangService,
             PlayerService playerService,
             PlayerSubmitService playerSubmitService,
-            MojangRateLimiter mojangRateLimiter,
             @Value("${mc-utils.previous-username.enabled:true}") boolean enabled,
-            @Value("${mc-utils.previous-username.requests-per-second:10}") double requestsPerSecond
+            @Value("${mc-utils.previous-username.max-requests-per-second:50}") double maxRequestsPerSecond
     ) {
         this.previousUsernameCheckRepository = previousUsernameCheckRepository;
         this.mojangService = mojangService;
         this.playerService = playerService;
         this.playerSubmitService = playerSubmitService;
-        this.mojangRateLimiter = mojangRateLimiter;
         this.enabled = enabled;
-        this.requestRateLimiter = RateLimiter.create(requestsPerSecond);
+        this.maxRequestsPerSecond = maxRequestsPerSecond;
+        this.requestRateLimiter = RateLimiter.create(Math.max(MIN_REQUESTS_PER_SECOND, maxRequestsPerSecond / 4));
     }
 
     @EventListener(ContextClosedEvent.class)
@@ -113,16 +117,9 @@ public class PreviousUsernameResolveService {
 
         long alreadyTracked = this.previousUsernameCheckRepository.deleteOwnedByTrackedPlayers(due);
         List<String> remaining = alreadyTracked == 0 ? due : this.previousUsernameCheckRepository.selectDue(now, BATCH_SIZE);
-        Totals totals = new Totals(alreadyTracked, 0, 0, 0, 0);
-        for (int offset = 0; offset < remaining.size(); offset += CHUNK_SIZE * MAX_CONCURRENT_CHUNKS) {
-            if (!this.running.get()) {
-                break;
-            }
-            int end = Math.min(offset + CHUNK_SIZE * MAX_CONCURRENT_CHUNKS, remaining.size());
-            totals = totals.plus(resolveChunks(remaining.subList(offset, end), now));
-            if (totals.failed() > 0) {
-                break;
-            }
+        Totals totals = new Totals(alreadyTracked, 0, 0, 0, 0, 0);
+        if (this.running.get()) {
+            totals = totals.plus(resolveChunks(remaining, now));
         }
 
         record(PreviousUsernameChecksMetric.Outcome.ALREADY_TRACKED, totals.alreadyTracked());
@@ -130,11 +127,13 @@ public class PreviousUsernameResolveService {
         record(PreviousUsernameChecksMetric.Outcome.ALREADY_QUEUED, totals.alreadyQueued());
         record(PreviousUsernameChecksMetric.Outcome.UNCLAIMED, totals.unclaimed());
         record(PreviousUsernameChecksMetric.Outcome.FAILED, totals.failed());
-        log.info("Previous username checks: {} due, {} already tracked, {} new players, {} already queued, {} unclaimed, {} failed",
-                due.size(), totals.alreadyTracked(), totals.newPlayers(), totals.alreadyQueued(), totals.unclaimed(), totals.failed());
+        log.info("Previous username checks: {} due, {} already tracked, {} new players, {} already queued, {} unclaimed, {} failed, {} rate limited, at {} req/s",
+                due.size(), totals.alreadyTracked(), totals.newPlayers(), totals.alreadyQueued(), totals.unclaimed(), totals.failed(),
+                totals.rateLimited(), String.format(Locale.ROOT, "%.1f", this.requestRateLimiter.getRate()));
         // A failing endpoint fails every chunk, so pausing until the next poll keeps it to one
         // round of requests a minute instead of hammering Mojang and the error-rate panels.
-        return totals.failed() == 0;
+        // Rate limits are backpressure rather than an outage, so they never pause the loop.
+        return totals.failed() == totals.rateLimited();
     }
 
     private Totals resolveChunks(List<String> names, Instant now) {
@@ -143,16 +142,23 @@ public class PreviousUsernameResolveService {
             List<String> chunk = List.copyOf(names.subList(offset, Math.min(offset + CHUNK_SIZE, names.size())));
             futures.add(Main.EXECUTOR.submit(() -> {
                 try {
-                    return resolveChunk(chunk, now);
+                    Totals chunkTotals = resolveChunk(chunk, now);
+                    speedUp();
+                    return chunkTotals;
+                } catch (RateLimitException e) {
+                    log.debug("Previous username chunk rate limited for {} names, postponing", chunk.size());
+                    postpone(chunk, now);
+                    slowDown();
+                    return new Totals(0, 0, 0, 0, chunk.size(), chunk.size());
                 } catch (Exception e) {
                     log.warn("Previous username chunk failed for {} names, postponing: {}", chunk.size(), e.toString());
-                    this.previousUsernameCheckRepository.postpone(chunk, now.plus(FAILURE_BACKOFF));
-                    return new Totals(0, 0, 0, 0, chunk.size());
+                    postpone(chunk, now);
+                    return new Totals(0, 0, 0, 0, chunk.size(), 0);
                 }
             }));
         }
 
-        Totals totals = new Totals(0, 0, 0, 0, 0);
+        Totals totals = new Totals(0, 0, 0, 0, 0, 0);
         for (Totals chunkTotals : FutureUtils.awaitAll(futures, "previous username resolve")) {
             totals = totals.plus(chunkTotals);
         }
@@ -161,7 +167,6 @@ public class PreviousUsernameResolveService {
 
     private Totals resolveChunk(List<String> chunk, Instant now) {
         this.requestRateLimiter.acquire();
-        this.mojangRateLimiter.acquire();
         List<MojangUsernameToUuidToken> tokens = this.mojangService.getUuidsFromUsernames(chunk);
 
         Map<String, UUID> resolved = new LinkedHashMap<>();
@@ -179,7 +184,36 @@ public class PreviousUsernameResolveService {
         List<UUID> newPlayers = ids.stream().filter(id -> !existing.contains(id)).toList();
         int enqueued = newPlayers.isEmpty() ? 0 : this.playerSubmitService.submitPlayers(newPlayers.stream().map(UUID::toString).toList(), null);
         this.previousUsernameCheckRepository.delete(List.copyOf(resolved.keySet()), now);
-        return new Totals(existing.size(), enqueued, newPlayers.size() - enqueued, unclaimed.size(), 0);
+        return new Totals(existing.size(), enqueued, newPlayers.size() - enqueued, unclaimed.size(), 0, 0);
+    }
+
+    private void postpone(List<String> chunk, Instant now) {
+        this.previousUsernameCheckRepository.postpone(chunk, now.plus(FAILURE_BACKOFF));
+    }
+
+    /**
+     * Backs the shared rate off when Mojang pushes back. One burst of 429s hits many in-flight
+     * chunks at once, so only the first within the cooldown halves the rate; otherwise a single
+     * burst would collapse it to the floor.
+     */
+    private void slowDown() {
+        synchronized (this.rateLock) {
+            long nowNanos = System.nanoTime();
+            if (nowNanos - this.lastSlowDownNanos < SLOW_DOWN_COOLDOWN_NANOS) {
+                return;
+            }
+            this.lastSlowDownNanos = nowNanos;
+            this.requestRateLimiter.setRate(Math.max(MIN_REQUESTS_PER_SECOND, this.requestRateLimiter.getRate() / 2));
+        }
+    }
+
+    /**
+     * Creeps the shared rate back up after a chunk succeeds, holding it at the configured ceiling.
+     */
+    private void speedUp() {
+        synchronized (this.rateLock) {
+            this.requestRateLimiter.setRate(Math.min(this.maxRequestsPerSecond, this.requestRateLimiter.getRate() + RATE_INCREMENT));
+        }
     }
 
     private void record(PreviousUsernameChecksMetric.Outcome outcome, long count) {
@@ -198,14 +232,15 @@ public class PreviousUsernameResolveService {
         }
     }
 
-    private record Totals(long alreadyTracked, long newPlayers, long alreadyQueued, long unclaimed, long failed) {
+    private record Totals(long alreadyTracked, long newPlayers, long alreadyQueued, long unclaimed, long failed, long rateLimited) {
         Totals plus(Totals other) {
             return new Totals(
                     this.alreadyTracked + other.alreadyTracked,
                     this.newPlayers + other.newPlayers,
                     this.alreadyQueued + other.alreadyQueued,
                     this.unclaimed + other.unclaimed,
-                    this.failed + other.failed);
+                    this.failed + other.failed,
+                    this.rateLimited + other.rateLimited);
         }
     }
 }

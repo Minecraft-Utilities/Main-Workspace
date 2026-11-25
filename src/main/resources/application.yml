@@ -181,4 +181,4 @@ mc-utils:
   # Bulk lookup of released usernames to discover players that are not tracked yet.
   previous-username:
     enabled: true
-    requests-per-second: 10
+    max-requests-per-second: 50
