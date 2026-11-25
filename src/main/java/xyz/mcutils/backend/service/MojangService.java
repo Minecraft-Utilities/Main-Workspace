@@ -112,8 +112,8 @@ public class MojangService {
         try {
             MojangUsernameToUuidToken[] result = webRequest.mojangProfileRequest(apiEndpoint + "/profiles/minecraft").useProxy()
                     .post(names)
-                    .as(MojangUsernameToUuidToken[].class);
-            success = result != null;
+                    .asRequired(MojangUsernameToUuidToken[].class);
+            success = true;
             return result == null ? List.of() : List.of(result);
         } finally {
             MetricService.getMetric(ExternalApiRequestsMetric.class).record(API_MOJANG, "bulk_username_lookup", success, System.currentTimeMillis() - start);

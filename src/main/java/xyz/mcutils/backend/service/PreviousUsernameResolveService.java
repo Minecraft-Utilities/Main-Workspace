@@ -120,6 +120,9 @@ public class PreviousUsernameResolveService {
             }
             int end = Math.min(offset + CHUNK_SIZE * MAX_CONCURRENT_CHUNKS, remaining.size());
             totals = totals.plus(resolveChunks(remaining.subList(offset, end), now));
+            if (totals.failed() > 0) {
+                break;
+            }
         }
 
         record(PreviousUsernameChecksMetric.Outcome.ALREADY_TRACKED, totals.alreadyTracked());
@@ -129,7 +132,9 @@ public class PreviousUsernameResolveService {
         record(PreviousUsernameChecksMetric.Outcome.FAILED, totals.failed());
         log.info("Previous username checks: {} due, {} already tracked, {} new players, {} already queued, {} unclaimed, {} failed",
                 due.size(), totals.alreadyTracked(), totals.newPlayers(), totals.alreadyQueued(), totals.unclaimed(), totals.failed());
-        return true;
+        // A failing endpoint fails every chunk, so pausing until the next poll keeps it to one
+        // round of requests a minute instead of hammering Mojang and the error-rate panels.
+        return totals.failed() == 0;
     }
 
     private Totals resolveChunks(List<String> names, Instant now) {

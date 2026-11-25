@@ -117,6 +117,8 @@ public class WebRequest {
         return new RequestBuilder(url, mojangProfileClient);
     }
 
+    private static final int MAX_ERROR_BODY_LENGTH = 200;
+
     public enum Method { GET, POST, HEAD }
 
     public class RequestBuilder {
@@ -160,16 +162,7 @@ public class WebRequest {
         }
 
         public <T> T as(Class<T> clazz) {
-            String requestUrl = resolveUrl();
-            var spec = restClient.method(toHttpMethod()).uri(requestUrl).accept(MediaType.APPLICATION_JSON);
-            if (body != null) {
-                if (body instanceof MultiValueMap) {
-                    spec.contentType(MediaType.APPLICATION_FORM_URLENCODED).body(body);
-                } else {
-                    spec.contentType(MediaType.APPLICATION_JSON).body(body);
-                }
-            }
-            return spec.exchange((req, response) -> {
+            return createSpec().exchange((req, response) -> {
                 HttpStatusCode status = response.getStatusCode();
                 if (status.isSameCodeAs(HttpStatus.TOO_MANY_REQUESTS)) {
                     throw new RateLimitException("Rate limit was reached");
@@ -180,6 +173,30 @@ public class WebRequest {
                 MediaType ct = response.getHeaders().getContentType();
                 if (ct == null || !ct.isCompatibleWith(MediaType.APPLICATION_JSON)) {
                     return null;
+                }
+                return response.bodyTo(clazz);
+            });
+        }
+
+        /**
+         * Like {@link #as(Class)}, but fails loudly. A rate limit raises
+         * {@link RateLimitException}; any other non-2xx status or a body that is not
+         * JSON raises {@link IllegalStateException} carrying the status, content type
+         * and the start of the response body.
+         */
+        public <T> T asRequired(Class<T> clazz) {
+            return createSpec().exchange((req, response) -> {
+                HttpStatusCode status = response.getStatusCode();
+                if (status.isSameCodeAs(HttpStatus.TOO_MANY_REQUESTS)) {
+                    throw new RateLimitException("Rate limit was reached");
+                }
+                MediaType contentType = response.getHeaders().getContentType();
+                if (!status.is2xxSuccessful() || contentType == null || !contentType.isCompatibleWith(MediaType.APPLICATION_JSON)) {
+                    String responseBody = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+                    if (responseBody.length() > MAX_ERROR_BODY_LENGTH) {
+                        responseBody = responseBody.substring(0, MAX_ERROR_BODY_LENGTH);
+                    }
+                    throw new IllegalStateException("HTTP " + status + " (" + contentType + ") from " + url + ": " + responseBody);
                 }
                 return response.bodyTo(clazz);
             });
@@ -232,6 +249,18 @@ public class WebRequest {
             } catch (Exception e) {
                 return false;
             }
+        }
+
+        private RestClient.RequestBodySpec createSpec() {
+            RestClient.RequestBodySpec spec = restClient.method(toHttpMethod()).uri(resolveUrl()).accept(MediaType.APPLICATION_JSON);
+            if (body != null) {
+                if (body instanceof MultiValueMap) {
+                    spec = spec.contentType(MediaType.APPLICATION_FORM_URLENCODED).body(body);
+                } else {
+                    spec = spec.contentType(MediaType.APPLICATION_JSON).body(body);
+                }
+            }
+            return spec;
         }
 
         private String resolveUrl() {
