@@ -4282,6 +4282,73 @@
           }
         }
       },
+      "panel-68": {
+        "kind": "Panel",
+        "spec": {
+          "id": 68,
+          "title": "New accounts (30d)",
+          "description": "Players added to the database in the last 30 days, from any source.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "victoriametrics-metrics-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "${ds}"
+                      },
+                      "spec": {
+                        "expr": "sum(increase(players_created_total{job=\"mc_utils\"}[30d]))"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "",
+            "spec": {
+              "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 0,
+                  "color": {
+                    "mode": "fixed",
+                    "fixedColor": "green"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
       "panel-7": {
         "kind": "Panel",
         "spec": {
@@ -4559,7 +4626,7 @@
                         "height": 4,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-10"
+                          "name": "panel-68"
                         }
                       }
                     },
@@ -4568,7 +4635,20 @@
                       "spec": {
                         "x": 8,
                         "y": 0,
-                        "width": 4,
+                        "width": 3,
+                        "height": 4,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-10"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 11,
+                        "y": 0,
+                        "width": 3,
                         "height": 4,
                         "element": {
                           "kind": "ElementReference",
@@ -4579,9 +4659,9 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 12,
+                        "x": 14,
                         "y": 0,
-                        "width": 4,
+                        "width": 3,
                         "height": 4,
                         "element": {
                           "kind": "ElementReference",
@@ -4592,7 +4672,7 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 16,
+                        "x": 17,
                         "y": 0,
                         "width": 4,
                         "height": 4,
@@ -4605,9 +4685,9 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 20,
+                        "x": 21,
                         "y": 0,
-                        "width": 4,
+                        "width": 3,
                         "height": 4,
                         "element": {
                           "kind": "ElementReference",

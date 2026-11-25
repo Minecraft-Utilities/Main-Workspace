@@ -17,6 +17,7 @@ import xyz.mcutils.backend.exception.impl.NotFoundException;
 import xyz.mcutils.backend.metric.impl.player.AccountsUpdatedMetric;
 import xyz.mcutils.backend.metric.impl.player.PlayerChangesDetectedMetric;
 import xyz.mcutils.backend.metric.impl.player.PlayerRefreshMetric;
+import xyz.mcutils.backend.metric.impl.player.PlayersCreatedMetric;
 import xyz.mcutils.backend.model.domain.cape.impl.VanillaCape;
 import xyz.mcutils.backend.model.domain.player.history.RecentUsernameChange;
 import xyz.mcutils.backend.model.domain.player.history.UsernameHistory;
@@ -290,6 +291,7 @@ public class PlayerService {
         }
 
         int inserted = this.playerCreateRepository.insertAll(playerRows, refreshStates, skinAdoptions, capeAdoptions);
+        MetricService.getMetric(PlayersCreatedMetric.class).inc(inserted);
         StatisticsService.addTrackedPlayerCount(inserted);
     }
 
