@@ -38,10 +38,6 @@ public interface SkinRepository extends JpaRepository<SkinRow, Long> {
     @Query("SELECT s FROM SkinRow s JOIN SkinTrendingRow t ON t.skinId = s.id ORDER BY t.heat DESC, s.id ASC")
     Slice<SkinRow> findTrendingSkins(Pageable pageable);
 
-    /** Planner row estimate from the last ANALYZE/VACUUM; -1 when the table was never analyzed. */
-    @Query(value = "SELECT reltuples::bigint FROM pg_class WHERE relname = 'skins' AND relkind = 'r' LIMIT 1", nativeQuery = true)
-    Long estimateRowCount();
-
     @Modifying
     @Transactional
     @Query("UPDATE SkinRow s SET s.legacy = :legacy WHERE s.textureId IN :textureIds AND s.legacy IS DISTINCT FROM :legacy")
