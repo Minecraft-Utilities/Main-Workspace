@@ -14,6 +14,7 @@ import xyz.mcutils.backend.model.persistence.postgres.SkinRow;
 import xyz.mcutils.backend.model.token.mojang.MojangProfileToken;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRepository;
+import xyz.mcutils.backend.repository.postgres.PreviousUsernameCheckRepository;
 import xyz.mcutils.backend.repository.postgres.UsernameChangeEventRepository;
 import xyz.mcutils.backend.websocket.WebSocketManager;
 import xyz.mcutils.backend.websocket.impl.NameChangeWebSocket;
@@ -52,7 +53,8 @@ class PlayerNameChangeBroadcastTest {
                 mock(PlayerSubmitService.class),
                 mock(PlayerService.class),
                 mock(MojangService.class),
-                mock(StatisticsService.class)
+                mock(StatisticsService.class),
+                mock(PreviousUsernameResolveService.class)
         );
         // ... and bumps the name-change counter on the statistics singleton.
         new StatisticsService(null, null, null, null, null);
@@ -65,6 +67,7 @@ class PlayerNameChangeBroadcastTest {
         UsernameChangeEventRepository usernameChangeEventRepository = mock(UsernameChangeEventRepository.class);
         SkinService skinService = mock(SkinService.class);
         CapeService capeService = mock(CapeService.class);
+        PreviousUsernameCheckRepository previousUsernameCheckRepository = mock(PreviousUsernameCheckRepository.class);
 
         this.playerService = new PlayerService(
                 null,
@@ -79,8 +82,9 @@ class PlayerNameChangeBroadcastTest {
                 null,
                 null,
                 null,
+                previousUsernameCheckRepository,
                 // Stands in for the @Lazy self proxy Spring injects, which owns the REQUIRES_NEW boundary.
-                new PlayerService(null, null, skinService, capeService, this.playerRepository, usernameChangeEventRepository, null, null, this.playerRefreshRepository, null, null, null, null, 64),
+                new PlayerService(null, null, skinService, capeService, this.playerRepository, usernameChangeEventRepository, null, null, this.playerRefreshRepository, null, null, null, previousUsernameCheckRepository, null, 64),
                 64
         );
 
