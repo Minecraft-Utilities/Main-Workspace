@@ -8,11 +8,11 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import xyz.mcutils.backend.common.Pagination;
 import xyz.mcutils.backend.model.domain.cape.Cape;
 import xyz.mcutils.backend.model.domain.cape.impl.VanillaCape;
 import xyz.mcutils.backend.service.CapeService;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @RestController
@@ -27,8 +27,8 @@ public class CapeController {
     }
 
     @GetMapping(value = "", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Pagination.Page<VanillaCape>> getCapes(@Parameter(description = "The page of capes to get", example = "1") @RequestParam(required = false, defaultValue = "1") int page) {
-        return ResponseEntity.ok().body(this.capeService.getPaginatedCapes(page));
+    public ResponseEntity<List<VanillaCape>> getCapes() {
+        return ResponseEntity.ok().body(this.capeService.getCapes());
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)

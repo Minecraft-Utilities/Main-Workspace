@@ -1,7 +1,5 @@
 package xyz.mcutils.backend.repository.postgres;
 
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import xyz.mcutils.backend.model.persistence.postgres.CapeRow;
@@ -16,6 +14,6 @@ public interface CapeRepository extends JpaRepository<CapeRow, Long> {
     List<CapeRow> findByTextureIdIn(Collection<String> textureIds);
 
     @Query("SELECT c FROM CapeRow c ORDER BY c.uniqueOwners DESC, c.id ASC")
-    Slice<CapeRow> findAllOrderByUniqueOwnersDescIdAsc(Pageable pageable);
+    List<CapeRow> findAllOrderByUniqueOwnersDescIdAsc();
 
 }

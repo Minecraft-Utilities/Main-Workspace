@@ -524,15 +524,6 @@ export interface components {
         HealthResponse: {
             status: string;
         };
-        PageVanillaCape: {
-            items: components["schemas"]["VanillaCape"][];
-            /** Format: int64 */
-            totalItems: number;
-            /** Format: int32 */
-            itemsPerPage: number;
-            /** Format: int32 */
-            totalPages: number;
-        };
         IndexResponse: {
             app: string;
             version: string;
@@ -1293,13 +1284,7 @@ export interface operations {
     };
     getCapes: {
         parameters: {
-            query?: {
-                /**
-                 * @description The page of capes to get
-                 * @example 1
-                 */
-                page?: number;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1312,7 +1297,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PageVanillaCape"];
+                    "application/json": components["schemas"]["VanillaCape"][];
                 };
             };
             /** @description Error */

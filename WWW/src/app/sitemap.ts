@@ -7,7 +7,6 @@ export const revalidate = 3600;
 
 const BASE_URL = env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, "");
 const SKIN_PAGES_PER_SORT = 4;
-const MAX_CAPE_PAGES = 50;
 
 const STATIC_ENTRIES: MetadataRoute.Sitemap = [
   { url: `${BASE_URL}/`, changeFrequency: "daily", priority: 1 },
@@ -18,19 +17,9 @@ const STATIC_ENTRIES: MetadataRoute.Sitemap = [
 ];
 
 async function collectCapes(): Promise<MetadataRoute.Sitemap> {
-  const first = await mcUtilsApi.cape().list(1);
-  if (first.error) {
+  const { data: capes, error } = await mcUtilsApi.cape().list();
+  if (error) {
     return [];
-  }
-
-  const capes = [...first.data.items];
-  const pages = Math.min(first.data.totalPages, MAX_CAPE_PAGES);
-  for (let page = 2; page <= pages; page++) {
-    const next = await mcUtilsApi.cape().list(page);
-    if (next.error) {
-      break;
-    }
-    capes.push(...next.data.items);
   }
 
   return capes.map(cape => ({

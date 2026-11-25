@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -38,12 +37,10 @@ import java.util.UUID;
 @Service
 @Slf4j
 public class CapeService {
-    public static final int CAPES_PER_PAGE = 50;
     public static CapeService INSTANCE;
 
     private final StorageService storageService;
     private final PlayerService playerService;
-    private final StatisticsService statisticsService;
     private final CapeRepository capeRepository;
     private final PlayerRepository playerRepository;
     private final WebRequest webRequest;
@@ -70,12 +67,11 @@ public class CapeService {
     @Value("${mc-utils.webhooks.new_cape_discovered}")
     private String newCapeDiscoveredWebhook;
 
-    public CapeService(StorageService storageService, @Lazy PlayerService playerService, StatisticsService statisticsService,
+    public CapeService(StorageService storageService, @Lazy PlayerService playerService,
                        CapeRepository capeRepository, PlayerRepository playerRepository, WebRequest webRequest,
                        PlatformTransactionManager transactionManager) {
         this.storageService = storageService;
         this.playerService = playerService;
-        this.statisticsService = statisticsService;
         this.capeRepository = capeRepository;
         this.playerRepository = playerRepository;
         this.webRequest = webRequest;
@@ -173,12 +169,8 @@ public class CapeService {
         }
     }
 
-    public Pagination.Page<VanillaCape> getPaginatedCapes(int page) {
-        Pagination<VanillaCape> pagination = new Pagination<VanillaCape>().setItemsPerPage(CAPES_PER_PAGE).setTotalItems(this.statisticsService.getTrackedCapeCount());
-        return pagination.getPage(page, (pageCallback) -> {
-            Pageable pageable = PageRequest.of(page - 1, pageCallback.limit());
-            return this.capeRepository.findAllOrderByUniqueOwnersDescIdAsc(pageable).map(VanillaCape::fromRow).stream().toList();
-        });
+    public List<VanillaCape> getCapes() {
+        return this.capeRepository.findAllOrderByUniqueOwnersDescIdAsc().stream().map(VanillaCape::fromRow).toList();
     }
 
     /**

@@ -4,35 +4,17 @@ import { EmptyState } from "@/components/empty-state";
 import { MediaCard } from "@/components/media-card";
 import { PageHeader, PageShell } from "@/components/page-shell";
 import { MediaGrid } from "@/components/ui/media-grid";
-import Pagination from "@/components/ui/pagination";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
 const DESCRIPTION = "Browse every known cape in Minecraft and the players who own it.";
 
-function parsePage(query: string[] | undefined): number {
-  const parsed = Number(query?.[0] ?? "1");
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
-}
+export const metadata: Metadata = buildMetadata({ title: "Minecraft Capes", description: DESCRIPTION, path: "/capes" });
 
-export async function generateMetadata(props: PageProps<"/capes/[[...query]]">): Promise<Metadata> {
-  const { query } = await props.params;
-  const page = parsePage(query);
-
-  return buildMetadata({
-    title: "Minecraft Capes",
-    description: DESCRIPTION,
-    path: page > 1 ? `/capes/${page}` : "/capes",
-  });
-}
-
-export default async function CapesPage({ params }: PageProps<"/capes/[[...query]]">) {
-  const { query } = await params;
-  const page = parsePage(query);
-
-  const { data: capes } = await mcUtilsApi.cape().list(page);
-  const isEmpty = !capes || capes.items.length === 0;
+export default async function CapesPage() {
+  const { data: capes } = await mcUtilsApi.cape().list();
+  const isEmpty = !capes || capes.length === 0;
 
   return (
     <PageShell>
@@ -43,7 +25,7 @@ export default async function CapesPage({ params }: PageProps<"/capes/[[...query
       ) : (
         <div className="flex w-full flex-col gap-6">
           <MediaGrid>
-            {capes.items.map(cape => (
+            {capes.map(cape => (
               <MediaCard
                 key={cape.id}
                 href={`/cape/${cape.id}`}
@@ -54,15 +36,6 @@ export default async function CapesPage({ params }: PageProps<"/capes/[[...query
               />
             ))}
           </MediaGrid>
-
-          <div className="flex justify-center">
-            <Pagination
-              page={page}
-              totalItems={capes.totalItems}
-              itemsPerPage={capes.itemsPerPage}
-              basePath="/capes"
-            />
-          </div>
         </div>
       )}
     </PageShell>

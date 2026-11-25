@@ -18,7 +18,6 @@ export type ARecord = Schemas["ARecord"];
 export type SrvRecord = Schemas["SRVRecord"];
 export type DnsRecord = ARecord | SrvRecord;
 export type SkinPage = Schemas["PageSkin"];
-export type CapePage = Schemas["PageVanillaCape"];
 
 type ServerWithRecords<T> = Omit<Schemas["CachedMinecraftServer"] & T, "records"> & { records: DnsRecord[] };
 

@@ -1,17 +1,16 @@
 import { type Http, queryString, toResult } from "../http";
-import type { Cape, CapePage, CapePart, ImageOptions, Result } from "../types";
+import type { Cape, CapePart, ImageOptions, Result } from "../types";
 
 export class CapeApi {
   constructor(private readonly http: Http) {}
 
   /**
-   * Fetches a page of capes.
+   * Fetches every known cape, most owned first.
    *
-   * @param page the page to fetch (default: 1)
-   * @returns the page of capes, or the error if one occurred
+   * @returns the capes, or the error if one occurred
    */
-  list(page = 1): Promise<Result<CapePage>> {
-    return toResult(this.http.client.GET("/capes", { params: { query: { page } } }));
+  list(): Promise<Result<Cape[]>> {
+    return toResult(this.http.client.GET("/capes"));
   }
 
   /**

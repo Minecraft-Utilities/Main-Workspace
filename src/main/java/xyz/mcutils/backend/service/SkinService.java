@@ -46,7 +46,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class SkinService {
     public static final String DEFAULT_SKIN = "31f477eb1a7beee631c2ca64d06f8f68fa93a3386d04452ab27f43acdf1b60cb"; // Steve
-    public static final int SKINS_PER_PAGE = 25;
+    public static final int SKINS_PER_PAGE = 20;
     public static SkinService INSTANCE;
 
     private final SkinRepository skinRepository;
