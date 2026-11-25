@@ -55,11 +55,16 @@ public class PreviousUsernameCheckRepository {
         if (usernames.isEmpty()) {
             return 0;
         }
+        // The LIMIT 1 lateral cannot be flattened into a join, so each name is one probe of
+        // idx_players_username_upper. A plain join let the planner pick a scan of the whole players
+        // table whenever the expression index had no statistics.
         return this.jdbc.sql("""
                         DELETE FROM previous_username_checks c
-                        USING players p
-                        WHERE upper(p.username) = upper(c.username)
-                          AND c.username = ANY(:names)
+                        USING unnest(CAST(:names AS text[])) AS n(username)
+                        CROSS JOIN LATERAL (
+                            SELECT 1 FROM players p WHERE upper(p.username) = upper(n.username) LIMIT 1
+                        ) owned
+                        WHERE c.username = n.username
                         """)
                 .param("names", usernames.toArray(String[]::new))
                 .update();
