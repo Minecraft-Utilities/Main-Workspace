@@ -35,6 +35,7 @@ import xyz.mcutils.backend.repository.postgres.PlayerMonthlyViewsRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshStateRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerSkinAdoptionRepository;
+import xyz.mcutils.backend.repository.postgres.PreviousUsernameCheckRepository;
 import xyz.mcutils.backend.repository.postgres.UsernameChangeEventRepository;
 import xyz.mcutils.backend.websocket.WebSocketManager;
 import xyz.mcutils.backend.websocket.impl.NameChangeWebSocket;
@@ -53,6 +54,10 @@ import java.util.stream.Stream;
 public class PlayerService {
     static final Duration PLAYER_UPDATE_INTERVAL = PlayerRefreshSchedule.BASE_INTERVAL;
     private static final int MAX_PLAYER_SEARCH_RESULTS = 5;
+    /**
+     * Mojang holds a released name for 37 days, so only after that can it describe a different account.
+     */
+    private static final Duration PREVIOUS_USERNAME_DELAY = Duration.ofDays(37);
     /**
      * Max concurrent per-player refresh transactions (each uses REQUIRES_NEW + row lock).
      * Keep well below {@code spring.datasource.hikari.maximum-pool-size} to leave connections
@@ -73,6 +78,7 @@ public class PlayerService {
     private final PlayerRefreshStateRepository playerRefreshStateRepository;
     private final PlayerCreateRepository playerCreateRepository;
     private final PlayerMonthlyViewsRepository playerMonthlyViewsRepository;
+    private final PreviousUsernameCheckRepository previousUsernameCheckRepository;
     private final PlayerService self;
 
     // A stale player stays stale until its refresh lands; without this every view in that window starts another Mojang call.
@@ -84,6 +90,7 @@ public class PlayerService {
                          PlayerSkinAdoptionRepository playerSkinAdoptionRepository, PlayerCapeAdoptionRepository playerCapeAdoptionRepository,
                          PlayerRefreshRepository playerRefreshRepository, PlayerRefreshStateRepository playerRefreshStateRepository,
                          PlayerMonthlyViewsRepository playerMonthlyViewsRepository, PlayerCreateRepository playerCreateRepository,
+                         PreviousUsernameCheckRepository previousUsernameCheckRepository,
                          @Lazy PlayerService self,
                          @Value("${mc-utils.player-refresh.concurrent-persists:64}") int concurrentPersists) {
         this.mojangService = mojangService;
@@ -98,6 +105,7 @@ public class PlayerService {
         this.playerRefreshStateRepository = playerRefreshStateRepository;
         this.playerMonthlyViewsRepository = playerMonthlyViewsRepository;
         this.playerCreateRepository = playerCreateRepository;
+        this.previousUsernameCheckRepository = previousUsernameCheckRepository;
         this.self = self;
         this.persistSemaphore = new Semaphore(concurrentPersists);
     }
@@ -477,6 +485,9 @@ public class PlayerService {
         if (usernameChangeEventRow != null) {
             this.usernameChangeEventRepository.save(usernameChangeEventRow);
             StatisticsService.addNameChangesCount(1);
+            if (previousUsername.length() <= 16) {
+                this.previousUsernameCheckRepository.upsert(previousUsername, now.plus(PREVIOUS_USERNAME_DELAY));
+            }
         }
 
         MetricService.getMetric(AccountsUpdatedMetric.class).inc(1);

@@ -177,3 +177,8 @@ mc-utils:
     concurrent-fetches: 45
     mojang-rate-limit: 120
     concurrent-persists: 64
+
+  # Bulk lookup of released usernames to discover players that are not tracked yet.
+  previous-username:
+    enabled: true
+    requests-per-second: 10

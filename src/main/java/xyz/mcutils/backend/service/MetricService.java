@@ -32,8 +32,10 @@ public class MetricService {
 
     private final TopSubmittedPlayersMetric topSubmittedPlayersMetric;
     private final SubmissionQueueSizeMetric submissionQueueSizeMetric;
+    private final PreviousUsernameChecksDueMetric previousUsernameChecksDueMetric;
 
-    public MetricService(@Lazy PlayerSubmitService playerSubmitService, @Lazy PlayerService playerService, @Lazy MojangService mojangService, @Lazy StatisticsService statisticsService) {
+    public MetricService(@Lazy PlayerSubmitService playerSubmitService, @Lazy PlayerService playerService, @Lazy MojangService mojangService,
+                         @Lazy StatisticsService statisticsService, @Lazy PreviousUsernameResolveService previousUsernameResolveService) {
         // DNS
         this.registerMetric(new DnsQueryMetric());
 
@@ -65,6 +67,9 @@ public class MetricService {
         this.registerMetric(this.submissionQueueSizeMetric);
         this.registerMetric(new PlayerSubmitOutcomesMetric());
         this.registerMetric(new PlayerSubmitProcessingMetric());
+        this.registerMetric(new PreviousUsernameChecksMetric());
+        this.previousUsernameChecksDueMetric = new PreviousUsernameChecksDueMetric(previousUsernameResolveService);
+        this.registerMetric(this.previousUsernameChecksDueMetric);
         this.topSubmittedPlayersMetric = new TopSubmittedPlayersMetric(playerService);
         this.registerMetric(this.topSubmittedPlayersMetric);
 
@@ -116,6 +121,7 @@ public class MetricService {
         try {
             this.topSubmittedPlayersMetric.refresh();
             this.submissionQueueSizeMetric.refresh();
+            this.previousUsernameChecksDueMetric.refresh();
         } catch (Exception e) {
             log.warn("Failed to refresh cached metrics: {}", e.toString());
         }

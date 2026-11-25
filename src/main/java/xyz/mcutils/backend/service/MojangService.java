@@ -97,6 +97,30 @@ public class MojangService {
     }
 
     /**
+     * Looks up up to 10 usernames at once. Names Mojang does not know (or that are currently
+     * unclaimed) are absent from the result rather than mapped to a placeholder.
+     *
+     * @param names the usernames to look up, at most 10
+     * @return the profiles Mojang returned, possibly empty
+     */
+    public List<MojangUsernameToUuidToken> getUuidsFromUsernames(List<String> names) {
+        if (names.isEmpty()) {
+            return List.of();
+        }
+        long start = System.currentTimeMillis();
+        boolean success = false;
+        try {
+            MojangUsernameToUuidToken[] result = webRequest.mojangProfileRequest(apiEndpoint + "/profiles/minecraft").useProxy()
+                    .post(names)
+                    .as(MojangUsernameToUuidToken[].class);
+            success = result != null;
+            return result == null ? List.of() : List.of(result);
+        } finally {
+            MetricService.getMetric(ExternalApiRequestsMetric.class).record(API_MOJANG, "bulk_username_lookup", success, System.currentTimeMillis() - start);
+        }
+    }
+
+    /**
      * Check if the hash for the given
      * hostname is in the blocked server list.
      *
