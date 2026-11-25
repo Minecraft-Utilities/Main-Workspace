@@ -141,7 +141,7 @@ class PlayerNameChangeBroadcastTest {
 
     private static PlayerRefreshRepository.DuePlayer duePlayer(PlayerRow row) {
         return new PlayerRefreshRepository.DuePlayer(
-                row.getId(), row.getUsername(), false, "skin-texture", null, 0, LAST_UPDATED, 0);
+                row.getId(), row.getUsername(), false, "skin-texture", null, 0, 0, LAST_UPDATED, 0);
     }
 
     /**

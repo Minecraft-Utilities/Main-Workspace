@@ -13,151 +13,67 @@ class PlayerRefreshScheduleTest {
     private static final Instant BASE = Instant.parse("2026-01-01T12:00:00Z");
 
     @Test
-    void neverChangingPlayerGetsIdleInterval() {
-        assertEquals(PlayerRefreshSchedule.IDLE_INTERVAL, PlayerRefreshSchedule.intervalFor(0, 0));
+    void zeroEvidenceSitsAtTheIdleEndOfTheRange() {
+        // The prior of 0.02 changes per 30 days lands just below the idle clamp rather than on it.
+        Duration interval = PlayerRefreshSchedule.intervalFor(0, 0);
+        assertTrue(interval.compareTo(Duration.ofDays(150)) >= 0, "interval=" + interval);
+        assertTrue(interval.compareTo(PlayerRefreshSchedule.IDLE_INTERVAL) <= 0, "interval=" + interval);
     }
 
     @Test
-    void volatilePlayerGetsShorterInterval() {
-        Duration stable = PlayerRefreshSchedule.intervalFor(0, 0);
-        Duration volatilePlayer = PlayerRefreshSchedule.intervalFor(5, 0);
-        assertTrue(volatilePlayer.compareTo(stable) < 0);
+    void moreChangesBuyShorterIntervals() {
+        Duration never = PlayerRefreshSchedule.intervalFor(0, 0);
+        Duration monthly = PlayerRefreshSchedule.intervalFor(1, 30);
+        Duration weekly = PlayerRefreshSchedule.intervalFor(4, 30);
+        Duration daily = PlayerRefreshSchedule.intervalFor(30, 30);
+        assertTrue(monthly.compareTo(never) < 0, "monthly=" + monthly + " never=" + never);
+        assertTrue(weekly.compareTo(monthly) < 0, "weekly=" + weekly + " monthly=" + monthly);
+        assertTrue(daily.compareTo(weekly) < 0, "daily=" + daily + " weekly=" + weekly);
     }
 
     @Test
-    void popularPlayerGetsShorterIntervalThanColdStable() {
-        Duration cold = PlayerRefreshSchedule.intervalFor(0, 0);
-        Duration popular = PlayerRefreshSchedule.intervalFor(0, 10_000);
-        assertTrue(popular.compareTo(cold) < 0);
+    void intervalStaysWithinBounds() {
+        double[][] samples = {{0, 0}, {1, 1}, {30, 0}, {0, 1_000_000}, {1_000, 0}};
+        for (double[] sample : samples) {
+            Duration interval = PlayerRefreshSchedule.intervalFor(sample[0], sample[1]);
+            String label = "count=" + sample[0] + " days=" + sample[1] + " interval=" + interval;
+            assertTrue(interval.compareTo(PlayerRefreshSchedule.MIN_INTERVAL) >= 0, label);
+            assertTrue(interval.compareTo(PlayerRefreshSchedule.IDLE_INTERVAL) <= 0, label);
+        }
     }
 
     @Test
-    void velocityBumpsOnChange() {
-        double velocity = PlayerRefreshSchedule.updateVelocity(0, BASE, BASE, true);
-        assertEquals(2.0, velocity, 0.001);
+    void changeBumpsCountAndSchedulesBurst() {
+        PlayerRefreshSchedule.Evidence evidence = PlayerRefreshSchedule.update(0, 0, BASE, BASE, true);
+        assertEquals(1.0, evidence.changeCount(), 1e-9);
+        assertEquals(0.0, evidence.observedDays(), 1e-9);
+        assertEquals(PlayerRefreshSchedule.BURST_INTERVAL, evidence.nextInterval());
     }
 
     @Test
-    void velocityDecaysWithoutChange() {
-        Instant later = BASE.plus(Duration.ofHours(48));
-        double velocity = PlayerRefreshSchedule.updateVelocity(4, BASE, later, false);
-        assertEquals(2.0, velocity, 0.001);
+    void decayHalvesBankedEvidenceAndBanksTheElapsedDays() {
+        PlayerRefreshSchedule.Evidence evidence =
+                PlayerRefreshSchedule.update(2, 4, BASE, BASE.plus(Duration.ofDays(90)), false);
+        assertEquals(1.0, evidence.changeCount(), 1e-6);
+        assertEquals(92.0, evidence.observedDays(), 1e-6);
+        assertEquals(PlayerRefreshSchedule.intervalFor(1, 92), evidence.nextInterval());
     }
 
     @Test
-    void velocityIsCapped() {
-        double velocity = PlayerRefreshSchedule.updateVelocity(29.5, BASE, BASE, true);
-        assertEquals(30.0, velocity, 0.001);
+    void cleanRefreshAddsObservedDays() {
+        PlayerRefreshSchedule.Evidence evidence =
+                PlayerRefreshSchedule.update(0, 10, BASE, BASE.plus(Duration.ofDays(5)), false);
+        assertEquals(0.0, evidence.changeCount(), 1e-9);
+        // Five more observed days, minus the decay on the ten already banked.
+        assertEquals(14.62, evidence.observedDays(), 0.01);
+        assertTrue(evidence.observedDays() > 10);
     }
 
     @Test
-    void hotThresholdVelocitySitsAtTheGeometricMidpoint() {
-        // At HOT_VELOCITY_THRESHOLD the interval is the geometric mean of the range (~10.6h).
-        long midpoint = (long) Math.sqrt((double) PlayerRefreshSchedule.MIN_INTERVAL.toMillis()
-                * PlayerRefreshSchedule.IDLE_INTERVAL.toMillis());
-        Duration hot = PlayerRefreshSchedule.intervalFor(PlayerRefreshSchedule.HOT_VELOCITY_THRESHOLD, 0);
-        assertEquals(midpoint, hot.toMillis(), 5);
-        assertTrue(PlayerRefreshSchedule.IDLE_INTERVAL.toMillis() / midpoint >= 30);
-    }
-
-    @Test
-    void intervalRespectsMinimumClamp() {
-        Duration extreme = PlayerRefreshSchedule.intervalFor(10, 1_000_000);
-        assertTrue(extreme.compareTo(PlayerRefreshSchedule.MIN_INTERVAL) >= 0);
-        assertTrue(extreme.compareTo(PlayerRefreshSchedule.intervalFor(1, 0)) < 0);
-    }
-
-    @Test
-    void computeNextRefreshAtIsNowPlusInterval() {
-        Instant now = Instant.parse("2026-06-01T00:00:00Z");
-        Instant next = PlayerRefreshSchedule.computeNextRefreshAt(2, 500, now);
-        Duration expected = PlayerRefreshSchedule.intervalFor(2, 500);
-        assertEquals(now.plus(expected), next);
-    }
-
-    @Test
-    void changedPlayerIsScheduledForBurstRecheck() {
-        Duration interval = PlayerRefreshSchedule.nextRefreshInterval(true, 0, 0);
-        assertEquals(PlayerRefreshSchedule.BURST_INTERVAL, interval);
-    }
-
-    @Test
-    void cleanBurstFallsBackToAdaptiveInterval() {
-        double velocity = 3.0;
-        long views = 500;
-        assertEquals(
-                PlayerRefreshSchedule.intervalFor(velocity, views),
-                PlayerRefreshSchedule.nextRefreshInterval(false, velocity, views)
-        );
-    }
-
-    @Test
-    void highVelocityDrivesIntervalWellBeneathOldFloor() {
-        Duration interval = PlayerRefreshSchedule.intervalFor(30, 0);
-        assertTrue(interval.compareTo(Duration.ofMinutes(60)) < 0);
-        assertTrue(interval.compareTo(PlayerRefreshSchedule.MIN_INTERVAL) >= 0);
-    }
-
-    @Test
-    void hotTierIsOrdersOfMagnitudeFasterThanTheIdleTier() {
+    void hotterPlayersAreRefreshedFarMoreOftenThanIdlePlayers() {
         Duration idle = PlayerRefreshSchedule.intervalFor(0, 0);
-        Duration hot = PlayerRefreshSchedule.intervalFor(30, 0);
-        assertTrue(idle.dividedBy(hot) >= 500, "idle=" + idle + " hot=" + hot);
-    }
-
-    @Test
-    void moreChangesBuyMoreRefreshes() {
-        double hourly = refreshesPerDay(1);
-        double weekly = refreshesPerDay(1 / 7.0);
-        double monthly = refreshesPerDay(1 / 30.0);
-        double never = refreshesPerDay(0);
-        assertTrue(hourly > weekly * 5, "hourly=" + hourly + " weekly=" + weekly);
-        assertTrue(weekly > monthly * 2, "weekly=" + weekly + " monthly=" + monthly);
-        assertTrue(monthly > never * 5, "monthly=" + monthly + " never=" + never);
-        assertTrue(hourly > never * 100, "hourly=" + hourly + " never=" + never);
-    }
-
-    @Test
-    void quietPlayerFadesBackToTheIdleTier() {
-        double velocity = PlayerRefreshSchedule.updateVelocity(0, BASE, BASE, true);
-        Duration interval = PlayerRefreshSchedule.nextRefreshInterval(true, velocity, 0);
-        Instant now = BASE;
-        Instant horizon = BASE.plus(Duration.ofDays(30));
-        int refreshes = 0;
-        while (now.isBefore(horizon)) {
-            Instant previous = now;
-            now = now.plus(interval);
-            refreshes++;
-            velocity = PlayerRefreshSchedule.updateVelocity(velocity, previous, now, false);
-            interval = PlayerRefreshSchedule.nextRefreshInterval(false, velocity, 0);
-        }
-        assertTrue(interval.compareTo(Duration.ofDays(13)) >= 0, "interval=" + interval);
-        assertTrue(refreshes <= 60, "a single change cost " + refreshes + " refreshes");
-    }
-
-    /**
-     * Refreshes per day the schedule converges on for a player whose profile changes
-     * {@code changesPerDay} times, feeding each computed interval back in as the loop does.
-     */
-    private static double refreshesPerDay(double changesPerDay) {
-        double velocity = 0;
-        double changeDebt = 0;
-        int refreshes = 0;
-        Instant now = BASE;
-        Instant horizon = BASE.plus(Duration.ofDays(365));
-        Duration interval = PlayerRefreshSchedule.BASE_INTERVAL;
-        while (now.isBefore(horizon)) {
-            Instant previous = now;
-            now = now.plus(interval);
-            refreshes++;
-            changeDebt += changesPerDay * Duration.between(previous, now).toMillis() / (double) Duration.ofDays(1).toMillis();
-            boolean changed = changeDebt >= 1.0;
-            if (changed) {
-                changeDebt -= 1.0;
-            }
-            velocity = PlayerRefreshSchedule.updateVelocity(velocity, previous, now, changed);
-            interval = PlayerRefreshSchedule.nextRefreshInterval(changed, velocity, 0);
-        }
-        return refreshes / 365.0;
+        Duration hot = PlayerRefreshSchedule.intervalFor(30, 30);
+        assertTrue(idle.dividedBy(hot) >= 50, "idle=" + idle + " hot=" + hot);
+        assertTrue(hot.compareTo(PlayerRefreshSchedule.MIN_INTERVAL) >= 0, "hot=" + hot);
     }
 }

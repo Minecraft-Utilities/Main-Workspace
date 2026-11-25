@@ -4,83 +4,69 @@ import java.time.Duration;
 import java.time.Instant;
 
 /**
- * Computes per-player refresh intervals from change velocity and popularity.
- * All state is persisted on {@code player_refresh_state}; selection queries only read {@code next_refresh_at}.
- * Intervals are spaced geometrically between {@link #MIN_INTERVAL} and {@link #IDLE_INTERVAL}, so the
- * refresh rate tracks the change rate across orders of magnitude instead of a flat hourly range.
+ * Computes per-player refresh intervals from a gamma-Poisson estimate of each player's change rate.
+ * <p>
+ * Every refresh adds the elapsed time to {@code observedDays} and any detected change to {@code changeCount};
+ * both decay with {@link #EVIDENCE_HALF_LIFE_DAYS} so old behaviour fades. The next refresh is scheduled for
+ * when the chance of a change since the last check reaches {@link #TARGET_CHANGE_PROBABILITY}, which spends
+ * refreshes on players who actually change and leaves the dormant majority at {@link #IDLE_INTERVAL}.
+ * <p>
+ * Parameters were chosen with {@code benchmark/refresh-sim/sim.py}.
  */
 public final class PlayerRefreshSchedule {
 
     public static final Duration BASE_INTERVAL = Duration.ofHours(3);
     public static final Duration MIN_INTERVAL = Duration.ofMinutes(20);
-    /** Ceiling for a player with no observed activity. */
-    public static final Duration IDLE_INTERVAL = Duration.ofDays(14);
+    public static final Duration IDLE_INTERVAL = Duration.ofDays(180);
     public static final Duration FAILURE_BACKOFF = Duration.ofMinutes(30);
     /**
-     * Re-check a player shortly after a detected change: a player who just changed is far
-     * likelier to change again in the next minutes-to-hours (skin tweaks, name-drop sprees),
-     * and the adaptive cadence alone would not revisit them for hours. Self-terminating:
-     * once a burst check comes back clean, scheduling falls back to the adaptive interval.
+     * Re-check shortly after a detected change: a player who just changed is far likelier to change again
+     * (skin tweaks, name-drop sprees). Self-terminating, as a clean check falls back to the estimated cadence.
      */
-    public static final Duration BURST_INTERVAL = Duration.ofMinutes(20);
+    public static final Duration BURST_INTERVAL = Duration.ofHours(6);
 
-    private static final double HALF_LIFE_HOURS = 48.0;
-    private static final double VELOCITY_WEIGHT = 2.0;
-    private static final double VIEW_WEIGHT = 0.05;
-    private static final double CHANGE_BUMP = 2.0;
-    private static final double MAX_VELOCITY = 30.0;
-    /** Activity at which a player lands on the geometric midpoint of the interval range. */
-    private static final double ACTIVITY_HALF = 1.0;
-    private static final double MIN_OVER_IDLE = (double) MIN_INTERVAL.toMillis() / IDLE_INTERVAL.toMillis();
+    private static final double EVIDENCE_HALF_LIFE_DAYS = 90.0;
+    private static final double TARGET_CHANGE_PROBABILITY = 0.1;
+    /** Prior of 0.02 changes per 30 days of observation, so an unseen player starts near the idle ceiling. */
+    private static final double PRIOR_CHANGES = 0.02;
+    private static final double PRIOR_DAYS = 30.0;
+    private static final double DECAY_PER_DAY = Math.log(2) / EVIDENCE_HALF_LIFE_DAYS;
+    private static final double MILLIS_PER_DAY = 86_400_000.0;
+    private static final double LN_NO_CHANGE = -Math.log1p(-TARGET_CHANGE_PROBABILITY);
 
     /**
-     * Minimum change velocity for a player to join the "hot" refresh tier (claimed before the
-     * cold tier, ordered by velocity descending).
+     * Minimum decayed change count for a player to join the "hot" refresh tier (claimed before the
+     * cold tier, ordered by count descending).
      * <p>
-     * MUST stay in sync with the partial index predicate in
-     * {@code V52__player_refresh_state.sql} and the SQL literals in
-     * {@code PlayerRefreshRepository} (kept as literals so Postgres can use the partial indexes).
+     * MUST stay in sync with the partial index predicates in {@code V52__player_refresh_state.sql} and the SQL
+     * literals in {@code PlayerRefreshRepository} (kept as literals so Postgres can use the partial indexes).
      */
-    public static final double HOT_VELOCITY_THRESHOLD = 0.5;
+    public static final double HOT_CHANGE_THRESHOLD = 0.5;
 
     private PlayerRefreshSchedule() {
     }
 
     /**
-     * Decays stored velocity by elapsed time since the last refresh, then bumps on detected changes.
+     * Decayed evidence after a refresh, plus the interval until the next one.
      */
-    public static double updateVelocity(double currentVelocity, Instant lastUpdated, Instant now, boolean hadChanges) {
-        double hoursSince = Duration.between(lastUpdated, now).toMillis() / 3_600_000.0;
-        if (hoursSince < 0) {
-            hoursSince = 0;
-        }
-        double velocity = currentVelocity * Math.pow(0.5, hoursSince / HALF_LIFE_HOURS);
-        if (hadChanges) {
-            velocity += CHANGE_BUMP;
-        }
-        return Math.min(velocity, MAX_VELOCITY);
+    public record Evidence(double changeCount, double observedDays, Duration nextInterval) {
+    }
+
+    public static Evidence update(double changeCount, double observedDays, Instant lastUpdated, Instant now, boolean hadChanges) {
+        double elapsedDays = Math.max(0, Duration.between(lastUpdated, now).toMillis() / MILLIS_PER_DAY);
+        double decay = Math.exp(-DECAY_PER_DAY * elapsedDays);
+        double count = changeCount * decay + (hadChanges ? 1 : 0);
+        double observed = observedDays * decay + elapsedDays;
+        Duration interval = hadChanges ? BURST_INTERVAL : intervalFor(count, observed);
+        return new Evidence(count, observed, interval);
     }
 
     /**
-     * Interval until the next refresh: a short burst right after any detected change,
-     * otherwise the adaptive cadence derived from velocity and popularity.
+     * Days until the chance of a change reaches the target, clamped to [{@link #MIN_INTERVAL}, {@link #IDLE_INTERVAL}].
      */
-    public static Duration nextRefreshInterval(boolean hadChanges, double velocity, long monthlyViews) {
-        return hadChanges ? BURST_INTERVAL : intervalFor(velocity, monthlyViews);
-    }
-
-    /**
-     * Maps activity (velocity + popularity) to a refresh interval between {@link #MIN_INTERVAL} and {@link #IDLE_INTERVAL}.
-     * Zero activity yields {@link #IDLE_INTERVAL}; the interval shrinks geometrically as activity rises.
-     */
-    public static Duration intervalFor(double velocity, long monthlyViews) {
-        double activity = VELOCITY_WEIGHT * velocity + VIEW_WEIGHT * Math.log1p(monthlyViews);
-        double hotness = activity / (activity + ACTIVITY_HALF);
-        long intervalMs = (long) (IDLE_INTERVAL.toMillis() * Math.pow(MIN_OVER_IDLE, hotness));
+    public static Duration intervalFor(double changeCount, double observedDays) {
+        double rate = (PRIOR_CHANGES + changeCount) / (PRIOR_DAYS + observedDays);
+        long intervalMs = (long) (LN_NO_CHANGE / rate * MILLIS_PER_DAY);
         return Duration.ofMillis(Math.clamp(intervalMs, MIN_INTERVAL.toMillis(), IDLE_INTERVAL.toMillis()));
-    }
-
-    public static Instant computeNextRefreshAt(double velocity, long monthlyViews, Instant now) {
-        return now.plus(intervalFor(velocity, monthlyViews));
     }
 }

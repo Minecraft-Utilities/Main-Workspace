@@ -20,7 +20,7 @@ import java.util.UUID;
  * keeps each chunk to a handful of statements and avoids loading entities that are only read.
  * <p>
  * The {@code 0.5} literals MUST stay in sync with
- * {@link xyz.mcutils.backend.service.PlayerRefreshSchedule#HOT_VELOCITY_THRESHOLD} and the partial
+ * {@link xyz.mcutils.backend.service.PlayerRefreshSchedule#HOT_CHANGE_THRESHOLD} and the partial
  * index predicates in {@code V52__player_refresh_state.sql}.
  */
 @Repository
@@ -32,20 +32,20 @@ public class PlayerRefreshRepository {
             ORDER BY v.views DESC, s.next_refresh_at ASC
             LIMIT :limit
             """;
-    private static final String SELECT_DUE_BY_VELOCITY = """
+    private static final String SELECT_DUE_BY_CHANGE_COUNT = """
             SELECT s.player_id FROM player_refresh_state s
             WHERE s.next_refresh_at < :now AND %s
               AND NOT EXISTS (SELECT 1 FROM player_monthly_views v WHERE v.player_id = s.player_id)
             ORDER BY %s
             LIMIT :limit
             """;
-    private static final String SELECT_DUE_HOT = SELECT_DUE_BY_VELOCITY.formatted(
-            "s.change_velocity >= 0.5", "s.change_velocity DESC, s.next_refresh_at ASC");
-    private static final String SELECT_DUE_COLD = SELECT_DUE_BY_VELOCITY.formatted(
-            "s.change_velocity < 0.5", "s.next_refresh_at ASC");
+    private static final String SELECT_DUE_HOT = SELECT_DUE_BY_CHANGE_COUNT.formatted(
+            "s.change_count >= 0.5", "s.change_count DESC, s.next_refresh_at ASC");
+    private static final String SELECT_DUE_COLD = SELECT_DUE_BY_CHANGE_COUNT.formatted(
+            "s.change_count < 0.5", "s.next_refresh_at ASC");
 
     private static final String LOAD_DUE = """
-            SELECT s.player_id, s.change_velocity, s.last_updated, COALESCE(v.views, 0) AS monthly_views,
+            SELECT s.player_id, s.change_count, s.observed_days, s.last_updated, COALESCE(v.views, 0) AS monthly_views,
                    p.username, p.legacy_account, sk.texture_id AS skin_texture_id, c.texture_id AS cape_texture_id
             FROM player_refresh_state s
             JOIN players p ON p.id = s.player_id
@@ -70,15 +70,16 @@ public class PlayerRefreshRepository {
             boolean legacyAccount,
             String skinTextureId,
             @Nullable String capeTextureId,
-            double changeVelocity,
+            double changeCount,
+            double observedDays,
             Instant lastUpdated,
             long monthlyViews
     ) {}
 
-    public record ScheduleUpdate(UUID playerId, Instant nextRefreshAt, double changeVelocity, Instant lastUpdated) {}
+    public record ScheduleUpdate(UUID playerId, Instant nextRefreshAt, double changeCount, double observedDays, Instant lastUpdated) {}
 
     /**
-     * Selects up to {@code limit} due players (viewed, then velocity-hot, then cold) without writing anything: a claim
+     * Selects up to {@code limit} due players (viewed, then change-count-hot, then cold) without writing anything: a claim
      * that rewrote every row would double the index and WAL traffic of the refresh itself.
      * Callers must give every returned player a new schedule (success or failure backoff).
      */
@@ -103,7 +104,8 @@ public class PlayerRefreshRepository {
                         rs.getBoolean("legacy_account"),
                         rs.getString("skin_texture_id"),
                         rs.getString("cape_texture_id"),
-                        rs.getDouble("change_velocity"),
+                        rs.getDouble("change_count"),
+                        rs.getDouble("observed_days"),
                         rs.getObject("last_updated", OffsetDateTime.class).toInstant(),
                         rs.getLong("monthly_views")))
                 .list();
@@ -146,27 +148,31 @@ public class PlayerRefreshRepository {
                 .toList();
         String[] ids = new String[sorted.size()];
         long[] next = new long[sorted.size()];
-        double[] velocity = new double[sorted.size()];
+        double[] counts = new double[sorted.size()];
+        double[] observed = new double[sorted.size()];
         long[] updated = new long[sorted.size()];
         for (int i = 0; i < ids.length; i++) {
             ScheduleUpdate update = sorted.get(i);
             ids[i] = update.playerId().toString();
             next[i] = update.nextRefreshAt().toEpochMilli();
-            velocity[i] = update.changeVelocity();
+            counts[i] = update.changeCount();
+            observed[i] = update.observedDays();
             updated[i] = update.lastUpdated().toEpochMilli();
         }
         this.jdbc.sql("""
                         UPDATE player_refresh_state s
                         SET next_refresh_at = to_timestamp(v.next / 1000.0),
-                            change_velocity = v.velocity,
+                            change_count = v.counts,
+                            observed_days = v.observed,
                             last_updated = to_timestamp(v.updated / 1000.0)
-                        FROM unnest(:ids::text[], :next::bigint[], :velocity::float8[], :updated::bigint[])
-                             AS v(id, next, velocity, updated)
+                        FROM unnest(:ids::text[], :next::bigint[], :counts::float8[], :observed::float8[], :updated::bigint[])
+                             AS v(id, next, counts, observed, updated)
                         WHERE s.player_id = v.id::uuid
                         """)
                 .param("ids", ids)
                 .param("next", next)
-                .param("velocity", velocity)
+                .param("counts", counts)
+                .param("observed", observed)
                 .param("updated", updated)
                 .update();
     }

@@ -26,8 +26,11 @@ public class PlayerRefreshStateRow {
     @Column(nullable = false, name = "next_refresh_at")
     private Instant nextRefreshAt;
 
-    @Column(nullable = false, name = "change_velocity")
-    private double changeVelocity;
+    @Column(nullable = false, name = "change_count")
+    private double changeCount;
+
+    @Column(nullable = false, name = "observed_days")
+    private double observedDays;
 
     @Column(nullable = false, name = "last_updated")
     private Instant lastUpdated;

@@ -194,7 +194,7 @@ public class PlayerService {
                 cape,
                 now
         ));
-        this.playerRefreshStateRepository.save(new PlayerRefreshStateRow(id, nextRefreshAt, 0, now));
+        this.playerRefreshStateRepository.save(new PlayerRefreshStateRow(id, nextRefreshAt, 0, 0, now));
 
         this.playerSkinAdoptionRepository.save(new PlayerSkinAdoptionRow(id, skin.getId(), now, null));
         if (cape != null) {
@@ -274,7 +274,7 @@ public class PlayerService {
             }
             playerRows.add(new PlayerRow(id, token.getName(), token.getLegacy() != null && token.getLegacy(),
                     0, skin, cape, now));
-            refreshStates.add(new PlayerRefreshStateRow(id, now.plus(PlayerRefreshSchedule.BASE_INTERVAL), 0, now));
+            refreshStates.add(new PlayerRefreshStateRow(id, now.plus(PlayerRefreshSchedule.BASE_INTERVAL), 0, 0, now));
         }
 
         if (playerRows.isEmpty()) {
@@ -344,7 +344,8 @@ public class PlayerService {
                 playerRow.isLegacyAccount(),
                 playerRow.getSkin().getTextureId(),
                 cape != null ? cape.getTextureId() : null,
-                refreshState.getChangeVelocity(),
+                refreshState.getChangeCount(),
+                refreshState.getObservedDays(),
                 refreshState.getLastUpdated(),
                 this.getMonthlyViews(playerRow.getId())
         );
@@ -364,10 +365,11 @@ public class PlayerService {
     }
 
     private ScheduleUpdate scheduleRefresh(DuePlayer player, boolean hadChanges, Instant now) {
-        double velocity = PlayerRefreshSchedule.updateVelocity(player.changeVelocity(), player.lastUpdated(), now, hadChanges);
-        Duration interval = PlayerRefreshSchedule.nextRefreshInterval(hadChanges, velocity, player.monthlyViews());
-        MetricService.getMetric(PlayerRefreshMetric.class).recordInterval(interval);
-        return new ScheduleUpdate(player.id(), now.plus(interval), velocity, now);
+        PlayerRefreshSchedule.Evidence evidence = PlayerRefreshSchedule.update(
+                player.changeCount(), player.observedDays(), player.lastUpdated(), now, hadChanges);
+        MetricService.getMetric(PlayerRefreshMetric.class).recordInterval(evidence.nextInterval());
+        return new ScheduleUpdate(player.id(), now.plus(evidence.nextInterval()),
+                evidence.changeCount(), evidence.observedDays(), now);
     }
 
     /**

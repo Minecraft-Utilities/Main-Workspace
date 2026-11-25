@@ -78,25 +78,28 @@ public class PlayerCreateRepository {
         int n = rows.size();
         String[] ids = new String[n];
         long[] next = new long[n];
-        double[] velocity = new double[n];
+        double[] counts = new double[n];
+        double[] observed = new double[n];
         long[] updated = new long[n];
         for (int i = 0; i < n; i++) {
             PlayerRefreshStateRow row = rows.get(i);
             ids[i] = row.getPlayerId().toString();
             next[i] = row.getNextRefreshAt().toEpochMilli();
-            velocity[i] = row.getChangeVelocity();
+            counts[i] = row.getChangeCount();
+            observed[i] = row.getObservedDays();
             updated[i] = row.getLastUpdated().toEpochMilli();
         }
         this.jdbc.sql("""
-                        INSERT INTO player_refresh_state (player_id, next_refresh_at, change_velocity, last_updated)
-                        SELECT v.id::uuid, to_timestamp(v.next / 1000.0), v.velocity, to_timestamp(v.updated / 1000.0)
-                        FROM unnest(:ids::text[], :next::bigint[], :velocity::float8[], :updated::bigint[])
-                             AS v(id, next, velocity, updated)
+                        INSERT INTO player_refresh_state (player_id, next_refresh_at, change_count, observed_days, last_updated)
+                        SELECT v.id::uuid, to_timestamp(v.next / 1000.0), v.counts, v.observed, to_timestamp(v.updated / 1000.0)
+                        FROM unnest(:ids::text[], :next::bigint[], :counts::float8[], :observed::float8[], :updated::bigint[])
+                             AS v(id, next, counts, observed, updated)
                         ON CONFLICT (player_id) DO NOTHING
                         """)
                 .param("ids", ids)
                 .param("next", next)
-                .param("velocity", velocity)
+                .param("counts", counts)
+                .param("observed", observed)
                 .param("updated", updated)
                 .update();
     }
