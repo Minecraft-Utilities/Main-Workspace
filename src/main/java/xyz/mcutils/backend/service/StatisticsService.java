@@ -35,6 +35,10 @@ public class StatisticsService {
     private final AtomicLong trendingSkinCount = new AtomicLong();
     private final AtomicLong nameChangesCount = new AtomicLong();
 
+    private volatile boolean trackedPlayerCountLoaded;
+    private volatile boolean trackedSkinCountLoaded;
+    private volatile boolean trackedCapeCountLoaded;
+
     public long getTrackedPlayerCount() {
         return this.trackedPlayerCount.get();
     }
@@ -112,11 +116,20 @@ public class StatisticsService {
     @EventListener(ApplicationReadyEvent.class)
     public void loadInitialCounts() {
         CompletableFuture.supplyAsync(this.playerRepository::count, Main.EXECUTOR)
-                .thenAccept(this.trackedPlayerCount::set);
+                .thenAccept(count -> {
+                    this.trackedPlayerCount.set(count);
+                    this.trackedPlayerCountLoaded = true;
+                });
         CompletableFuture.supplyAsync(this.skinRepository::count, Main.EXECUTOR)
-                .thenAccept(this.trackedSkinCount::set);
+                .thenAccept(count -> {
+                    this.trackedSkinCount.set(count);
+                    this.trackedSkinCountLoaded = true;
+                });
         CompletableFuture.supplyAsync(this.capeRepository::count, Main.EXECUTOR)
-                .thenAccept(this.trackedCapeCount::set);
+                .thenAccept(count -> {
+                    this.trackedCapeCount.set(count);
+                    this.trackedCapeCountLoaded = true;
+                });
         CompletableFuture.supplyAsync(this.skinTrendingRepository::count, Main.EXECUTOR)
                 .thenAccept(this.trendingSkinCount::set);
         CompletableFuture.supplyAsync(this.usernameChangeEventRepository::countNameChanges, Main.EXECUTOR)

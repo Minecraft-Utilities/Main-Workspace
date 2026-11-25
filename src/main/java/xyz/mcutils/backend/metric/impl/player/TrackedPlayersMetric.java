@@ -8,7 +8,9 @@ import xyz.mcutils.backend.service.StatisticsService;
 public class TrackedPlayersMetric extends GaugeWithCallbackMetric {
     public TrackedPlayersMetric(StatisticsService statisticsService) {
         super(GaugeWithCallback.builder().name("tracked_players").callback(callback -> {
-            callback.call(statisticsService.getTrackedPlayerCount());
+            if (statisticsService.isTrackedPlayerCountLoaded()) {
+                callback.call(statisticsService.getTrackedPlayerCount());
+            }
         }).register(MetricService.REGISTRY));
     }
 }

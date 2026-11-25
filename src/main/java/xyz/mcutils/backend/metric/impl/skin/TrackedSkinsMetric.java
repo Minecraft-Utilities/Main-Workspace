@@ -8,7 +8,9 @@ import xyz.mcutils.backend.service.StatisticsService;
 public class TrackedSkinsMetric extends GaugeWithCallbackMetric {
     public TrackedSkinsMetric(StatisticsService statisticsService) {
         super(GaugeWithCallback.builder().name("tracked_skins").callback(callback -> {
-            callback.call(statisticsService.getTrackedSkinCount());
+            if (statisticsService.isTrackedSkinCountLoaded()) {
+                callback.call(statisticsService.getTrackedSkinCount());
+            }
         }).register(MetricService.REGISTRY));
     }
 }
