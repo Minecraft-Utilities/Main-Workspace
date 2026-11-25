@@ -1,4 +1,5 @@
-"use client";
+import { imageUrl } from "mcutils-js-api";
+("use client");
 
 import { mcUtilsApi } from "@/common/mc-utils";
 import { useQuery } from "@tanstack/react-query";
@@ -29,7 +30,7 @@ export default function PlayerPreview({ nameOrUuid, trigger }: { nameOrUuid: str
       <HoverCardTrigger asChild>{trigger}</HoverCardTrigger>
       {player && (
         <HoverCardContent className="flex w-85 flex-col gap-4 rounded-xl">
-          <img src={player.skin.parts.FACE} className="size-14" alt="" />
+          <img src={imageUrl(player.skin.parts.FACE, { size: 128 })} className="size-14" alt="" />
 
           <div className="gap-05 flex flex-col">
             <p>{player.username}</p>

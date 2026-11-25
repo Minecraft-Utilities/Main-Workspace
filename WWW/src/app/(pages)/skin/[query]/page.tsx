@@ -8,6 +8,7 @@ import { PageShell, PageTitle } from "@/components/page-shell";
 import SimpleLink from "@/components/simple-link";
 import SkinHeadCommands from "@/components/skin/skin-head-commands";
 import SkinPreview from "@/components/skin/skin-preview";
+import { imageUrl } from "mcutils-js-api";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Script from "next/script";
@@ -47,7 +48,7 @@ export async function generateMetadata(props: PageProps<"/skin/[query]">): Promi
     title,
     description,
     icons: {
-      icon: skin.parts.HEAD_ISO,
+      icon: imageUrl(skin.parts.HEAD_ISO, { size: 64 }),
     },
     openGraph: {
       title,

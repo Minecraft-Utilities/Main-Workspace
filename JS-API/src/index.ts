@@ -5,6 +5,7 @@ import { SkinApi } from "./api/skin";
 import { createHttp, toResult } from "./http";
 import type { IpLookup, Result, Statistics } from "./types";
 
+export { imageUrl } from "./image";
 export * from "./types";
 
 export type McUtilsOptions = {

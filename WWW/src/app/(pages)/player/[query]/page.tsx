@@ -11,6 +11,7 @@ import PlayerSkin from "@/components/player/skin/player-skin";
 import PlayerSkins from "@/components/player/skin/player-skins";
 import { SelectedCapeProvider } from "@/components/provider/selected-cape-provider";
 import { SelectedSkinProvider } from "@/components/provider/selected-skin-provider";
+import { imageUrl } from "mcutils-js-api";
 import { Metadata } from "next";
 import { cache } from "react";
 
@@ -36,7 +37,7 @@ export async function generateMetadata(props: PageProps<"/player/[query]">): Pro
     };
   }
   const previewImage = player.skin.parts.FULLBODY_ISO_FRONT;
-  const favicon = player.skin.parts.HEAD_ISO;
+  const favicon = imageUrl(player.skin.parts.HEAD_ISO, { size: 64 });
   return {
     title: `${player.username}: Minecraft Profile, Skin & UUID`,
     description: `View ${player.username}'s Minecraft skin, cape, UUID, and profile history on MC Utils.`,

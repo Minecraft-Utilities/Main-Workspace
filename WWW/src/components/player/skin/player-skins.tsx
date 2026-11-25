@@ -1,4 +1,5 @@
-"use client";
+import { imageUrl } from "mcutils-js-api";
+("use client");
 
 import { cn } from "@/common/utils";
 import type { FullPlayer } from "mcutils-js-api";
@@ -79,7 +80,7 @@ export default function PlayerSkins({ player }: PlayerSkinsProps) {
                   className="focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
                 >
                   <Image
-                    src={skin.parts.FACE}
+                    src={imageUrl(skin.parts.FACE, { size: 96 })}
                     alt={`${player.username}'s ${skinLabel}`}
                     width={38}
                     height={38}

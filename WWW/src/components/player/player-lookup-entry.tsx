@@ -1,5 +1,6 @@
 import { cn } from "@/common/utils";
 import type { BasicPlayer } from "mcutils-js-api";
+import { imageUrl } from "mcutils-js-api";
 import Image from "next/image";
 
 interface PlayerLookupEntryProps {
@@ -20,7 +21,7 @@ export default function PlayerLookupEntry({ entry, onSelect }: PlayerLookupEntry
       onClick={() => onSelect(entry)}
     >
       <Image
-        src={entry.skin.parts.FACE}
+        src={imageUrl(entry.skin.parts.FACE, { size: 64 })}
         alt=""
         className="size-8 shrink-0 rounded-md object-cover"
         width={32}

@@ -8,6 +8,7 @@ import { MEDIA_GRID, MediaCard } from "@/components/media-card";
 import { PageShell, PageTitle } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
 import { ArrowRightIcon } from "lucide-react";
+import { imageUrl } from "mcutils-js-api";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Script from "next/script";
@@ -77,7 +78,7 @@ export default async function HomePage() {
                 <MediaCard
                   key={skin.id}
                   href={`/skin/${skin.id}`}
-                  imageUrl={skin.parts.FULLBODY_ISO_FRONT}
+                  imageUrl={imageUrl(skin.parts.FULLBODY_ISO_FRONT, { size: 384 })}
                   alt="Minecraft Skin"
                   count={skin.uniqueOwners}
                 />

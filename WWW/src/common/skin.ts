@@ -1,3 +1,5 @@
+import { imageUrl } from "mcutils-js-api";
+
 /**
  * Encode the skin textures into the base64 JSON that Minecraft expects as a profile texture value
  *
@@ -11,11 +13,11 @@ export function encodeSkinTextures(textureId: string) {
 }
 
 /**
- * Adds a cape to a rendered skin part URL, leaving the URL untouched when no cape is selected.
+ * Applies the size and optional cape to a rendered skin part URL.
  */
-export function skinPartUrl(partUrl: string, capeId?: string | number | null): string {
-  if (capeId === undefined || capeId === null || capeId === "") {
-    return partUrl;
-  }
-  return `${partUrl}${partUrl.includes("?") ? "&" : "?"}capeId=${encodeURIComponent(String(capeId))}`;
+export function skinPartUrl(partUrl: string, capeId?: string | number | null, size?: number): string {
+  return imageUrl(partUrl, {
+    size,
+    capeId: capeId === undefined || capeId === null || capeId === "" ? undefined : String(capeId),
+  });
 }

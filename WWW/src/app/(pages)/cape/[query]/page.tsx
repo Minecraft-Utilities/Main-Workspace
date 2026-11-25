@@ -7,6 +7,7 @@ import EntityPlayers from "@/components/entity/entity-players";
 import { ErrorCard } from "@/components/error-card";
 import { PageShell, PageTitle } from "@/components/page-shell";
 import SimpleLink from "@/components/simple-link";
+import { imageUrl } from "mcutils-js-api";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Script from "next/script";
@@ -46,7 +47,7 @@ export async function generateMetadata(props: PageProps<"/cape/[query]">): Promi
   return {
     title,
     icons: {
-      icon: cape.parts.FRONT,
+      icon: imageUrl(cape.parts.FRONT, { size: 64 }),
     },
     description,
     openGraph: {

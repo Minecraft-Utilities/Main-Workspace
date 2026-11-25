@@ -40,7 +40,7 @@ export default async function CapesPage({ params }: PageProps<"/capes/[[...query
               <MediaCard
                 key={cape.id}
                 href={`/cape/${cape.id}`}
-                imageUrl={capeRenderUrl(cape.id)}
+                imageUrl={capeRenderUrl(cape.id, 384)}
                 alt={cape.name ?? "Minecraft Cape"}
                 caption={cape.name ?? "Unknown Cape"}
                 count={cape.uniqueOwners}

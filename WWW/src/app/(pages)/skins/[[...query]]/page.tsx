@@ -6,6 +6,7 @@ import { PageShell, PageTitle } from "@/components/page-shell";
 import { isSkinSort, SKIN_SORT_OPTIONS } from "@/components/skins/skin-sort-options";
 import { Button } from "@/components/ui/button";
 import Pagination from "@/components/ui/pagination";
+import { imageUrl } from "mcutils-js-api";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -77,7 +78,7 @@ export default async function SkinsPage({ params }: PageProps<"/skins/[[...query
               <MediaCard
                 key={skin.id}
                 href={`/skin/${skin.id}`}
-                imageUrl={skin.parts.FULLBODY_ISO_FRONT}
+                imageUrl={imageUrl(skin.parts.FULLBODY_ISO_FRONT, { size: 384 })}
                 alt="Minecraft Skin"
                 count={skin.uniqueOwners}
               />

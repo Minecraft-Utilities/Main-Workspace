@@ -73,7 +73,7 @@ export default function NameChanges({
                 className="bg-muted/40 size-[22px] shrink-0 overflow-hidden rounded-sm"
               >
                 <Image
-                  src={mcUtilsApi.player().skinUrl(change.playerId, "FACE")}
+                  src={mcUtilsApi.player().skinUrl(change.playerId, "FACE", { size: 64 })}
                   alt={change.newUsername}
                   width={22}
                   height={22}

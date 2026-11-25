@@ -1,4 +1,5 @@
-"use client";
+import { imageUrl } from "mcutils-js-api";
+("use client");
 
 import { cn } from "@/common/utils";
 import type { FullPlayer } from "mcutils-js-api";
@@ -81,7 +82,7 @@ export default function PlayerCapes({ player }: PlayerCapesProps) {
                   className="focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
                 >
                   <Image
-                    src={cape.parts.FRONT}
+                    src={imageUrl(cape.parts.FRONT, { size: 128 })}
                     alt={`${player.username}'s ${capeLabel}`}
                     width={64 * CAPE_ASPECT_RATIO}
                     height={64}

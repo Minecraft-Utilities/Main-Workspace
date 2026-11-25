@@ -67,8 +67,8 @@ export default function PlayerSkin({ player }: PlayerSkinProps) {
         <div className="relative flex h-72 w-full items-center justify-center overflow-hidden">
           {displayMode === "2D" && (
             <SkinPreviewImage
-              key={skinPartUrl(displaySkin.parts[displayPart], displayCape?.id)}
-              src={skinPartUrl(displaySkin.parts[displayPart], displayCape?.id)}
+              key={skinPartUrl(displaySkin.parts[displayPart], displayCape?.id, 576)}
+              src={skinPartUrl(displaySkin.parts[displayPart], displayCape?.id, 576)}
               alt={`${player.username} skin - ${SKIN_PART_LABELS[displayPart]}`}
             />
           )}
@@ -107,7 +107,7 @@ export default function PlayerSkin({ player }: PlayerSkinProps) {
                       onMouseLeave={handlePartHoverLeave}
                     >
                       <Image
-                        src={skinPartUrl(displaySkin.parts[part], displayCape?.id)}
+                        src={skinPartUrl(displaySkin.parts[part], displayCape?.id, 128)}
                         alt={SKIN_PART_LABELS[part] ?? part}
                         width={56}
                         height={56}
