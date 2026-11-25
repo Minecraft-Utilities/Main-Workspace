@@ -1,5 +1,6 @@
 import { formatDate } from "@/common/time-utils";
 import { CopyButton } from "@/components/copy-button";
+import SimpleTooltip from "@/components/simple-tooltip";
 import TimeAgo from "@/components/time-ago";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
 import { StateBlock } from "@/components/ui/state-block";
@@ -46,11 +47,15 @@ export default function PlayerUsernameHistory({ player }: PlayerUsernameHistoryP
                 return (
                   <TableRow key={`${entry.newUsername}-${entry.timestamp}`}>
                     <TableCell className="text-foreground pl-4 font-medium">{entry.newUsername}</TableCell>
-                    <TableCell
-                      className="text-muted-foreground"
-                      title={isFirstName ? undefined : formatDate(seenAt, "Do MMMM, YYYY HH:mm a")}
-                    >
-                      {isFirstName ? null : <TimeAgo date={seenAt} rounded />}
+                    <TableCell className="text-muted-foreground">
+                      {isFirstName ? null : (
+                        <SimpleTooltip
+                          display={formatDate(seenAt, "Do MMMM, YYYY HH:mm a")}
+                          className="justify-start"
+                        >
+                          <TimeAgo date={seenAt} rounded />
+                        </SimpleTooltip>
+                      )}
                     </TableCell>
                     <TableCell className="pr-2 text-right">
                       <CopyButton

@@ -1,4 +1,5 @@
 import { cn } from "@/common/utils";
+import SimpleTooltip from "@/components/simple-tooltip";
 import type { ReactNode } from "react";
 
 export interface StatItem {
@@ -23,8 +24,14 @@ export function StatRow({ stats, className }: StatRowProps) {
       {stats.map(stat => (
         <div key={stat.label} className="flex min-w-0 flex-col gap-0.5">
           <dt className="text-muted-foreground text-[13px] leading-[18px] font-medium">{stat.label}</dt>
-          <dd className="text-foreground text-lg leading-7 font-medium tabular-nums sm:text-xl" title={stat.title}>
-            {stat.value}
+          <dd className="text-foreground text-lg leading-7 font-medium tabular-nums sm:text-xl">
+            {stat.title ? (
+              <SimpleTooltip display={stat.title} className="justify-start">
+                {stat.value}
+              </SimpleTooltip>
+            ) : (
+              stat.value
+            )}
           </dd>
         </div>
       ))}

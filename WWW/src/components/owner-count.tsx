@@ -1,4 +1,5 @@
 import { cn, formatNumberWithCommas } from "@/common/utils";
+import SimpleTooltip from "@/components/simple-tooltip";
 import { UserIcon } from "lucide-react";
 
 export type OwnerCountVariant = "default" | "overlay";
@@ -23,13 +24,12 @@ export default function OwnerCount({
   const formatted = formatNumberWithCommas(count);
   const label = name ? `${formatted} ${name}` : formatted;
 
-  return (
+  const content = (
     <div
       className={cn("flex items-center gap-1", className)}
       role={ariaHidden ? undefined : "img"}
       aria-label={ariaHidden ? undefined : label}
       aria-hidden={ariaHidden || undefined}
-      title={ariaHidden ? undefined : label}
     >
       <UserIcon className="text-primary size-3.5" aria-hidden />
       <span className={cn("text-xs", variant === "overlay" ? "text-white/60" : "text-muted-foreground")}>
@@ -37,5 +37,15 @@ export default function OwnerCount({
         {name ? ` ${name}` : ""}
       </span>
     </div>
+  );
+
+  if (ariaHidden) {
+    return content;
+  }
+
+  return (
+    <SimpleTooltip display={label} className="justify-start">
+      {content}
+    </SimpleTooltip>
   );
 }
