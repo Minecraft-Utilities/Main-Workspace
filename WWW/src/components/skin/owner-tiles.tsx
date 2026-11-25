@@ -99,9 +99,9 @@ export default function OwnerTiles({ accounts, currentOwners, kind }: OwnerTiles
             />
           </div>
         ) : (
-          <ul className="divide-border/60 divide-y">
+          <ul className="-mb-px grid md:grid-cols-2">
             {visibleAccounts.map(account => (
-              <li key={account}>
+              <li key={account} className="border-border/60 border-b md:odd:border-r">
                 <Link
                   href={`/player/${encodeURIComponent(account)}`}
                   className="group hover:bg-control-hover focus-visible:outline-ring flex min-w-0 items-center gap-3 px-4 py-2 transition-colors duration-[120ms] ease-out focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
