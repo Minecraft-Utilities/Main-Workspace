@@ -1,5 +1,5 @@
+"use client";
 import { imageUrl } from "mcutils-js-api";
-("use client");
 
 import { mcUtilsApi } from "@/common/mc-utils";
 import { useQuery } from "@tanstack/react-query";

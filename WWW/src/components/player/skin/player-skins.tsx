@@ -1,5 +1,5 @@
+"use client";
 import { imageUrl } from "mcutils-js-api";
-("use client");
 
 import { cn } from "@/common/utils";
 import type { FullPlayer } from "mcutils-js-api";
