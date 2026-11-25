@@ -1583,8 +1583,8 @@
         "kind": "Panel",
         "spec": {
           "id": 31,
-          "title": "Adaptive refresh interval",
-          "description": "Computed interval until a player is refreshed again.",
+          "title": "Refresh interval mix",
+          "description": "Share of background refreshes by the interval just scheduled until that player's next refresh. Most players are dormant and sit at the 180d idle ceiling; the low bands are players who recently changed.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -1601,8 +1601,8 @@
                         "name": "${ds}"
                       },
                       "spec": {
-                        "expr": "histogram_quantile(0.5, sum by (le) (rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\"}[$__rate_interval])))",
-                        "legendFormat": "p50"
+                        "expr": "sum(rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\",le=\"28800.0\"}[1h])) / sum(rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\",le=\"+Inf\"}[1h]))",
+                        "legendFormat": "≤ 8h (recently changed / hot)"
                       }
                     },
                     "refId": "A",
@@ -1620,11 +1620,49 @@
                         "name": "${ds}"
                       },
                       "spec": {
-                        "expr": "histogram_quantile(0.95, sum by (le) (rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\"}[$__rate_interval])))",
-                        "legendFormat": "p95"
+                        "expr": "clamp_min(sum(rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\",le=\"1209600.0\"}[1h])) - sum(rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\",le=\"28800.0\"}[1h])), 0) / sum(rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\",le=\"+Inf\"}[1h]))",
+                        "legendFormat": "8h – 14d"
                       }
                     },
                     "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "victoriametrics-metrics-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "${ds}"
+                      },
+                      "spec": {
+                        "expr": "clamp_min(sum(rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\",le=\"10368000.0\"}[1h])) - sum(rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\",le=\"1209600.0\"}[1h])), 0) / sum(rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\",le=\"+Inf\"}[1h]))",
+                        "legendFormat": "14d – 120d"
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "victoriametrics-metrics-datasource",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "${ds}"
+                      },
+                      "spec": {
+                        "expr": "clamp_min(sum(rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\",le=\"+Inf\"}[1h])) - sum(rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\",le=\"10368000.0\"}[1h])), 0) / sum(rate(player_refresh_interval_seconds_bucket{job=\"mc_utils\",le=\"+Inf\"}[1h]))",
+                        "legendFormat": "120d+ (idle)"
+                      }
+                    },
+                    "refId": "D",
                     "hidden": false
                   }
                 }
@@ -1650,12 +1688,18 @@
               },
               "fieldConfig": {
                 "defaults": {
-                  "unit": "s",
+                  "unit": "percentunit",
+                  "min": 0,
+                  "max": 1,
                   "custom": {
-                    "fillOpacity": 12,
-                    "lineWidth": 1.5,
+                    "fillOpacity": 60,
+                    "lineWidth": 1,
                     "showPoints": "never",
-                    "spanNulls": true
+                    "spanNulls": true,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "normal"
+                    }
                   }
                 },
                 "overrides": []
