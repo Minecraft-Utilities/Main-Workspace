@@ -1,6 +1,6 @@
 -- Velocity is replaced by a gamma-Poisson evidence pair (decayed change count + observed days).
--- Old velocities have no meaningful conversion, so every player restarts from the prior; the hot
--- index predicate keeps its 0.5 threshold on the renamed column.
+-- Both statements are catalog-only: the rename keeps the hot/cold partial indexes, and a constant
+-- default adds the column without rewriting the 60M+ row table. Old velocities stay as the initial
+-- count and wash out through the decay on the next refreshes.
 ALTER TABLE player_refresh_state RENAME COLUMN change_velocity TO change_count;
 ALTER TABLE player_refresh_state ADD COLUMN observed_days DOUBLE PRECISION NOT NULL DEFAULT 0;
-UPDATE player_refresh_state SET change_count = 0 WHERE change_count <> 0;
