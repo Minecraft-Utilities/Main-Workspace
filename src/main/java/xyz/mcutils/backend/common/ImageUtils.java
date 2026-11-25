@@ -33,7 +33,10 @@ public class ImageUtils {
         int newWidth = Math.max(1, (int) (w * scale));
         int newHeight = Math.max(1, (int) (h * scale));
         BufferedImage scaled = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
-        int[] srcPixels = image.getRaster().getDataBuffer() instanceof DataBufferInt db ? db.getData() : image.getRGB(0, 0, w, h, null, 0, w);
+        // A subimage shares its parent's int[] with a different stride and offset, so only root rasters can be read directly.
+        int[] srcPixels = image.getRaster().getParent() == null && image.getRaster().getDataBuffer() instanceof DataBufferInt db
+                ? db.getData()
+                : image.getRGB(0, 0, w, h, null, 0, w);
         int[] destPixels = ((DataBufferInt) scaled.getRaster().getDataBuffer()).getData();
         final long xStep = (newWidth > 1) ? ((long) w << 32) / newWidth : 0;
         final long yStep = (newHeight > 1) ? ((long) h << 32) / newHeight : 0;
