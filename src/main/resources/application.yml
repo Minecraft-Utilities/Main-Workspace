@@ -173,7 +173,7 @@ mc-utils:
 
   # Background player refresh (Mojang session server profile lookups).
   player-refresh:
-    chunk-size: 5000
-    concurrent-fetches: 400
-    mojang-rate-limit: 800
+    chunk-size: 1000
+    concurrent-fetches: 50
+    mojang-rate-limit: 100
     concurrent-persists: 64
