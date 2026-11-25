@@ -71,28 +71,30 @@ export default async function PlayerPage({ params }: PageProps<"/player/[query]"
   }
 
   return (
-    <PageShell>
+    <>
       {isProduction() && <PlayerViewsCounter playerQuery={player.uniqueId} />}
-      <div className="flex w-full min-w-0 flex-col gap-10">
-        <PlayerHeader player={player} />
+      <PageShell>
+        <div className="flex w-full min-w-0 flex-col gap-10">
+          <PlayerHeader player={player} />
 
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-          <section className="flex w-full flex-col gap-4 lg:w-90 lg:shrink-0">
-            <SelectedCapeProvider initialCape={player.cape ?? null}>
-              <SelectedSkinProvider key={player.skin.textureId} initialSkin={player.skin}>
-                <PlayerSkin player={player} />
-                <PlayerSkins player={player} />
-              </SelectedSkinProvider>
-              <PlayerCapes player={player} />
-            </SelectedCapeProvider>
-          </section>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+            <section className="flex w-full flex-col gap-4 lg:w-90 lg:shrink-0">
+              <SelectedCapeProvider initialCape={player.cape ?? null}>
+                <SelectedSkinProvider key={player.skin.textureId} initialSkin={player.skin}>
+                  <PlayerSkin player={player} />
+                  <PlayerSkins player={player} />
+                </SelectedSkinProvider>
+                <PlayerCapes player={player} />
+              </SelectedCapeProvider>
+            </section>
 
-          <aside className="flex min-w-0 flex-1 flex-col gap-4">
-            <PlayerDetails player={player} />
-            <PlayerUsernameHistory player={player} />
-          </aside>
+            <aside className="flex min-w-0 flex-1 flex-col gap-4">
+              <PlayerDetails player={player} />
+              <PlayerUsernameHistory player={player} />
+            </aside>
+          </div>
         </div>
-      </div>
-    </PageShell>
+      </PageShell>
+    </>
   );
 }
