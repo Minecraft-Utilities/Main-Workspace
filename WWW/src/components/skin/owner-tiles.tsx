@@ -2,19 +2,24 @@
 
 import { env } from "@/common/env";
 import { formatNumberWithCommas } from "@/common/utils";
-import { SearchIcon } from "lucide-react";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import PlayerPreview from "../player/player-preview";
 import SimpleLink from "../simple-link";
-import { Input } from "../ui/input";
+
+export type OwnerTilesKind = "cape" | "skin";
 
 interface OwnerTilesProps {
   accounts: string[];
   remaining: number;
+  kind: OwnerTilesKind;
 }
 
-export default function OwnerTiles({ accounts, remaining }: OwnerTilesProps) {
+export default function OwnerTiles({ accounts, remaining, kind }: OwnerTilesProps) {
   const [filter, setFilter] = useState("");
+  const noun = kind === "cape" ? "wearers" : "users";
+  const singular = kind === "cape" ? "wearer" : "user";
 
   const visibleAccounts = useMemo(() => {
     const query = filter.trim().toLowerCase();
@@ -26,24 +31,23 @@ export default function OwnerTiles({ accounts, remaining }: OwnerTilesProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <div className="relative shrink-0">
-        <SearchIcon
-          className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2"
-          aria-hidden
-        />
-        <Input
+      <InputGroup className="h-8 shrink-0">
+        <InputGroupAddon align="inline-start">
+          <Search aria-hidden />
+        </InputGroupAddon>
+        <InputGroupInput
           type="search"
           value={filter}
           onChange={event => setFilter(event.target.value)}
-          placeholder="Filter players..."
-          aria-label="Filter players"
-          className="h-8 pl-8 text-xs"
+          placeholder={`Filter ${noun}...`}
+          aria-label={`Filter ${noun}`}
+          className="text-xs"
         />
-      </div>
+      </InputGroup>
 
       {visibleAccounts.length === 0 ? (
-        <p className="text-muted-foreground py-2 text-xs">
-          {accounts.length === 0 ? "No owners recorded yet." : "No matching players."}
+        <p className="text-muted-foreground px-1 py-2 text-xs">
+          {accounts.length === 0 ? `No ${noun} recorded yet.` : `No matching ${singular}s.`}
         </p>
       ) : (
         <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 content-start gap-1.5 overflow-y-auto pr-1 sm:grid-cols-3">

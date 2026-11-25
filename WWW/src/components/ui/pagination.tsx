@@ -1,4 +1,4 @@
-import { cn, formatNumberWithCommas } from "@/common/utils";
+import { cn } from "@/common/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import React from "react";
@@ -108,7 +108,7 @@ export default function Pagination({ page, totalItems, itemsPerPage, basePath, h
         currentPage={page}
         href={href(pageNum)}
       >
-        {formatNumberWithCommas(pageNum)}
+        {pageNum}
       </PageButton>
     );
   }

@@ -1,12 +1,13 @@
 "use client";
 
+import { websocketUrl } from "@/common/websocket-url";
 import { ShirtIcon, UserIcon } from "lucide-react";
 import CountUp from "react-countup";
 import useWebSocket from "react-use-websocket";
 import { Tooltip } from "../ui/tooltip";
 
 export default function Statistics() {
-  const { lastJsonMessage } = useWebSocket("wss://mc.fascinated.cc/api/ws/statistics", {
+  const { lastJsonMessage } = useWebSocket(websocketUrl("ws/statistics"), {
     reconnectAttempts: 1000000000,
     reconnectInterval: 1000,
     retryOnError: true,

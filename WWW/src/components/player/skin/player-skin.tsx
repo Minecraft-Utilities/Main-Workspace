@@ -122,14 +122,13 @@ export default function PlayerSkin({ player }: PlayerSkinProps) {
 
         {/* Download Buttons */}
         <div className="absolute top-2 right-2 flex gap-2">
-          <SimpleTooltip display="Download Skin Texture">
-            <DownloadFileButton
-              href={displaySkin.textureUrl}
-              filename={`${player.username}-skin-texture.png`}
-            >
-              <DownloadIcon className="size-4" />
-            </DownloadFileButton>
-          </SimpleTooltip>
+          <DownloadFileButton
+            href={displaySkin.textureUrl}
+            filename={`${player.username}-skin-texture.png`}
+            label="Download skin"
+          >
+            <DownloadIcon className="size-4" />
+          </DownloadFileButton>
         </div>
       </CardContent>
     </Card>

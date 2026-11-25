@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "@/common/utils";
 import SimpleLink from "@/components/simple-link";
 import { ExternalLink } from "lucide-react";
 import Image from "next/image";
@@ -43,11 +42,7 @@ const links: { [category: string]: FooterLink[] } = {
 
 export default function Footer() {
   return (
-    <footer
-      className={cn(
-        "border-border bg-secondary/60 mt-5 flex min-h-40 shrink-0 flex-col justify-between gap-10 border-t px-10 py-5 select-none lg:gap-0"
-      )}
-    >
+    <footer className="border-border bg-secondary/60 mt-5 flex min-h-40 shrink-0 flex-col justify-between gap-10 border-t px-2 py-5 select-none lg:gap-0 lg:px-8">
       <div className="flex justify-center">
         <div className="flex w-full max-w-(--breakpoint-2xl) flex-col items-center justify-between gap-7 lg:flex-row lg:items-start">
           {/* Branding & social */}
@@ -80,12 +75,10 @@ export default function Footer() {
                       key={link.name}
                       className="flex items-center gap-2 text-sm transition-all hover:opacity-75"
                       href={link.href}
-                      target={external ? "_blank" : undefined}
-                      rel={external ? "noopener noreferrer" : undefined}
                       draggable={false}
                     >
                       <span>{link.name}</span>
-                      {external && <ExternalLink className="size-3.5" />}
+                      {external && <ExternalLink className="size-3.5" aria-hidden />}
                     </SimpleLink>
                   );
                 })}

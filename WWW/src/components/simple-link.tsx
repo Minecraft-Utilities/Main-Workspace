@@ -26,9 +26,9 @@ export default function SimpleLink({ children, href, className, ...props }: Simp
       rel={isExternal ? "noopener noreferrer" : undefined}
       draggable={false}
       className={cn("hover:text-primary/80 transition-colors duration-200", className)}
-      aria-label={isExternal ? `Open ${href} in a new tab` : undefined}
     >
       {children}
+      {isExternal && <span className="sr-only"> (opens in a new tab)</span>}
     </Link>
   );
 }

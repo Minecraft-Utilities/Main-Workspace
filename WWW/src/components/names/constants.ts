@@ -1,0 +1,1 @@
+export const TOTAL_NAME_CHANGES_TO_SHOW = 50;

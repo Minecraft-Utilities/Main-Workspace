@@ -1,34 +1,42 @@
+import { env } from "@/common/env";
 import { mcUtilsApi } from "@/common/mc-utils";
+import { EmptyState } from "@/components/empty-state";
+import { ErrorCard } from "@/components/error-card";
 import NameChanges from "@/components/names/name-changes";
-import Card, { CardContent, CardHeader } from "@/components/ui/card";
-import { Metadata } from "next";
+import { PageShell, PageTitle } from "@/components/page-shell";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
+const DESCRIPTION = "Recent Minecraft username changes across all players tracked by MC Utils.";
+
 export const metadata: Metadata = {
   title: "Recent Name Changes",
-  description: "Recent Minecraft username changes across all players tracked by MC Utils.",
+  description: DESCRIPTION,
+  openGraph: {
+    title: "Recent Name Changes",
+    description: DESCRIPTION,
+    url: `${env.NEXT_PUBLIC_BASE_URL}/names`,
+  },
 };
 
 export default async function NamesPage() {
   const { data: nameChanges, error } = await mcUtilsApi.player().nameChanges();
 
   return (
-    <div className="mt-10 flex w-full flex-col items-center justify-center gap-10">
-      <header className="w-full max-w-[980px]">
-        <h1 className="text-foreground text-4xl font-bold tracking-tight">Recent Name Changes</h1>
-      </header>
+    <PageShell>
+      <PageTitle>Recent Name Changes</PageTitle>
 
-      {error && (
-        <Card className="border-destructive/50 bg-destructive/10 w-full max-w-2xl overflow-hidden p-0">
-          <CardHeader variant="destructive">Error</CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm">{error.message}</p>
-          </CardContent>
-        </Card>
+      {error ? (
+        <ErrorCard title="Couldn't load name changes" message={error.message} />
+      ) : nameChanges && nameChanges.length > 0 ? (
+        <NameChanges nameChanges={nameChanges} />
+      ) : (
+        <EmptyState
+          title="No name changes yet"
+          description="Minecraft username changes will appear here as players are tracked."
+        />
       )}
-
-      {nameChanges && nameChanges.length > 0 && <NameChanges nameChanges={nameChanges} />}
-    </div>
+    </PageShell>
   );
 }

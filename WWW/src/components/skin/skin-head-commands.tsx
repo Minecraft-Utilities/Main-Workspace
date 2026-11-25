@@ -2,12 +2,10 @@
 
 import { env } from "@/common/env";
 import { encodeSkinTextures } from "@/common/skin";
+import { CopyButton } from "@/components/copy-button";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
 import type { Skin } from "mcutils-js-api";
-import { CheckIcon, CopyIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
-import { Button } from "../ui/button";
+import { useState } from "react";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 interface SkinHeadCommandsProps {
@@ -16,8 +14,6 @@ interface SkinHeadCommandsProps {
 
 export default function SkinHeadCommands({ skin }: SkinHeadCommandsProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [copied, setCopied] = useState(false);
-  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const commands = [
     {
@@ -35,28 +31,6 @@ export default function SkinHeadCommands({ skin }: SkinHeadCommandsProps) {
   ];
 
   const command = commands[selectedIndex].command;
-
-  useEffect(() => {
-    return () => {
-      if (resetTimer.current) {
-        clearTimeout(resetTimer.current);
-      }
-    };
-  }, []);
-
-  async function copyCommand() {
-    try {
-      await navigator.clipboard.writeText(command);
-      setCopied(true);
-      if (resetTimer.current) {
-        clearTimeout(resetTimer.current);
-      }
-      resetTimer.current = setTimeout(() => setCopied(false), 2000);
-      toast.success("Copied to your clipboard");
-    } catch {
-      toast.error("Failed to copy");
-    }
-  }
 
   return (
     <Card>
@@ -82,22 +56,19 @@ export default function SkinHeadCommands({ skin }: SkinHeadCommandsProps) {
           tabIndex={0}
           aria-readonly="true"
           aria-label={`Minecraft ${commands[selectedIndex].version} head command`}
-          className="border-input h-9 min-w-0 flex-1 overflow-x-auto border-y px-3 py-2 font-mono text-xs whitespace-nowrap select-all [scrollbar-width:none]"
+          className="border-input focus-visible:ring-ring h-9 min-w-0 flex-1 [scrollbar-width:none] overflow-x-auto border-y px-3 py-2 font-mono text-xs whitespace-nowrap select-all focus-visible:ring-2 focus-visible:outline-none"
         >
           {command}
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={copyCommand}
-          aria-label={copied ? "Command copied" : "Copy command"}
+        <CopyButton
+          value={command}
+          label="Copy command"
+          variant="text"
           className="h-9 shrink-0 rounded-l-none px-3"
         >
-          {copied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
-          <span className="text-xs">{copied ? "Copied" : "Copy"}</span>
-        </Button>
+          Copy
+        </CopyButton>
       </CardContent>
     </Card>
   );

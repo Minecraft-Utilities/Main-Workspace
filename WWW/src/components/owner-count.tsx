@@ -1,14 +1,38 @@
-import { formatNumberWithCommas } from "@/common/utils";
+import { cn, formatNumberWithCommas } from "@/common/utils";
 import { UserIcon } from "lucide-react";
 
-export default function OwnerCount({ count, name }: { count: number; name?: string }) {
+export type OwnerCountVariant = "default" | "overlay";
+
+export interface OwnerCountProps {
+  count: number;
+  name?: string;
+  /** "overlay" is for gradient overlays on media cards. */
+  variant?: OwnerCountVariant;
+  /** Set when an enclosing link already announces the count. */
+  ariaHidden?: boolean;
+  className?: string;
+}
+
+export default function OwnerCount({
+  count,
+  name,
+  variant = "default",
+  ariaHidden = false,
+  className,
+}: OwnerCountProps) {
   const formatted = formatNumberWithCommas(count);
   const label = name ? `${formatted} ${name}` : formatted;
 
   return (
-    <div className="flex items-center gap-1" role="img" aria-label={label} title={label}>
+    <div
+      className={cn("flex items-center gap-1", className)}
+      role={ariaHidden ? undefined : "img"}
+      aria-label={ariaHidden ? undefined : label}
+      aria-hidden={ariaHidden || undefined}
+      title={ariaHidden ? undefined : label}
+    >
       <UserIcon className="text-primary size-3.5" aria-hidden />
-      <span className="text-xs text-white/60">
+      <span className={cn("text-xs", variant === "overlay" ? "text-white/60" : "text-muted-foreground")}>
         {formatted}
         {name ? ` ${name}` : ""}
       </span>

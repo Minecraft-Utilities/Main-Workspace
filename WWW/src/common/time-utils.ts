@@ -133,7 +133,8 @@ export function timeAgoRounded(input: Date, compact: boolean = true) {
     { unit: "second", short: "s", seconds: 1 },
   ];
 
-  const { unit, short, seconds } = units.find(entry => deltaSeconds >= entry.seconds) ?? units[units.length - 1];
+  const { unit, short, seconds } =
+    units.find(entry => deltaSeconds >= entry.seconds) ?? units[units.length - 1];
   const count = Math.max(1, Math.round(deltaSeconds / seconds));
 
   return compact ? `${count}${short} ago` : `${count} ${unit}${count === 1 ? "" : "s"} ago`;

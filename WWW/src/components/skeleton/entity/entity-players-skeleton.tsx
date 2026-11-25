@@ -2,9 +2,9 @@ import Skeleton from "@/components/skeleton/ui/skeleton";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
 import { UserIcon } from "lucide-react";
 
-export default function CapePlayersSkeleton() {
+export default function EntityPlayersSkeleton() {
   return (
-    <Card className="h-105 w-full text-sm">
+    <Card className="min-h-105 w-full text-sm">
       <CardHeader>
         <div className="flex items-center gap-1">
           <UserIcon className="text-primary size-3.5" aria-hidden />

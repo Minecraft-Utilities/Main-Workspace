@@ -1,44 +1,61 @@
+import { env } from "@/common/env";
 import { mcUtilsApi } from "@/common/mc-utils";
+import { BackLink } from "@/components/breadcrumb-link";
+import EntityDetails from "@/components/entity/entity-details";
+import EntityPlayers from "@/components/entity/entity-players";
+import { ErrorCard } from "@/components/error-card";
+import { PageShell, PageTitle } from "@/components/page-shell";
 import SimpleLink from "@/components/simple-link";
-import SimpleTooltip from "@/components/simple-tooltip";
-import SkinDetails from "@/components/skin/skin-details";
 import SkinHeadCommands from "@/components/skin/skin-head-commands";
-import SkinPlayers from "@/components/skin/skin-players";
 import SkinPreview from "@/components/skin/skin-preview";
-import { ArrowUpRightIcon } from "lucide-react";
-import { Metadata } from "next";
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import Link from "next/link";
+import Script from "next/script";
+import { cache } from "react";
 
 export const dynamic = "force-dynamic";
 
+const getSkin = cache(async (query: string) => {
+  const { data: skin } = await mcUtilsApi.skin().fetch(query);
+  return skin ?? null;
+});
+
+const NOT_FOUND_DESCRIPTION =
+  "This Minecraft skin could not be found. Browse all Minecraft skins on MC Utils.";
+
 export async function generateMetadata(props: PageProps<"/skin/[query]">): Promise<Metadata> {
   const { query } = await props.params;
-  const { data: skin } = await mcUtilsApi.skin().fetch(query);
+  const skin = await getSkin(query);
 
   if (!skin) {
     return {
       title: "Skin not found",
-      description: "Skin not found",
+      description: NOT_FOUND_DESCRIPTION,
       openGraph: {
         title: "Skin not found",
-        description: "Skin not found",
+        description: NOT_FOUND_DESCRIPTION,
       },
     };
   }
 
-  const favicon = skin.parts.HEAD_ISO;
+  const title = skin.firstSeenUsing ? `${skin.firstSeenUsing}'s Minecraft Skin` : "Minecraft Skin";
+  const description = skin.firstSeenUsing
+    ? `View ${skin.firstSeenUsing}'s Minecraft skin on MC Utils: preview the full body, download the texture, and see its users.`
+    : "View this Minecraft skin on MC Utils: preview the full body, download the texture, and see its users.";
+
   return {
-    title: `${skin.firstSeenUsing}'s Minecraft Skin`,
-    description: `View ${skin.firstSeenUsing}'s Minecraft skin on MC Utils: preview the full body, download, and see which players have used it.`,
+    title,
+    description,
     icons: {
-      icon: favicon,
+      icon: skin.parts.HEAD_ISO,
     },
     openGraph: {
-      title: `${skin.firstSeenUsing}'s Minecraft Skin`,
-      description: `View ${skin.firstSeenUsing}'s Minecraft skin on MC Utils: preview the full body, download, and see which players have used it.`,
+      title,
+      description,
+      url: `${env.NEXT_PUBLIC_BASE_URL}/skin/${skin.id}`,
       images: [
         {
-          url: favicon,
+          url: skin.parts.FULLBODY_ISO_FRONT,
         },
       ],
     },
@@ -47,48 +64,81 @@ export async function generateMetadata(props: PageProps<"/skin/[query]">): Promi
 
 export default async function SkinsPage({ params }: PageProps<"/skin/[query]">) {
   const { query } = await params;
-
-  const { data: skin } = await mcUtilsApi.skin().fetch(query);
+  const skin = await getSkin(query);
 
   if (!skin) {
-    return redirect("/skins");
+    return (
+      <PageShell>
+        <BackLink href="/skins" label="Back to skins" />
+        <ErrorCard
+          title="Skin not found"
+          message={
+            <>
+              We couldn&apos;t find a skin matching &quot;{query}&quot;.{" "}
+              <Link href="/skins" className="underline underline-offset-4">
+                Browse all skins
+              </Link>
+              .
+            </>
+          }
+        />
+      </PageShell>
+    );
   }
 
-  return (
-    <div className="mt-10 flex w-full flex-col items-center justify-center gap-10">
-      <header className="w-full max-w-[980px] text-left">
-        <h1 className="text-foreground text-4xl font-bold tracking-tight">
-          <span className="block sm:inline">
-            <SimpleLink
-              href={`/player/${skin.firstSeenUsing}`}
-              title="View player"
-              className="group inline-flex items-center gap-2 underline-offset-4 hover:underline"
-            >
-              {skin.firstSeenUsing}&apos;s Skin
-              <SimpleTooltip display="View player" className="w-auto">
-                <ArrowUpRightIcon
-                  aria-hidden
-                  className="text-muted-foreground size-5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                />
-              </SimpleTooltip>
-            </SimpleLink>
-          </span>
-        </h1>
-      </header>
+  const skinName = skin.firstSeenUsing ? `${skin.firstSeenUsing}'s Skin` : "Minecraft Skin";
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CreativeWork",
+    name: skinName,
+    image: skin.parts.FULLBODY_ISO_FRONT,
+    url: `${env.NEXT_PUBLIC_BASE_URL}/skin/${skin.id}`,
+    description: `Minecraft skin${skin.firstSeenUsing ? ` worn by ${skin.firstSeenUsing}` : ""}.`,
+  };
 
-      <div className="flex w-full max-w-[980px] flex-col gap-4 lg:flex-row">
+  return (
+    <PageShell>
+      <Script
+        id="skin-jsonld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
+      <div className="flex w-full flex-col gap-2">
+        <BackLink href="/skins" label="Back to skins" />
+        <PageTitle
+          description={
+            skin.firstSeenUsing ? (
+              <SimpleLink
+                href={`/player/${skin.firstSeenUsing}`}
+                className="underline-offset-4 hover:underline"
+              >
+                View {skin.firstSeenUsing}&apos;s player profile
+              </SimpleLink>
+            ) : undefined
+          }
+        >
+          {skinName}
+        </PageTitle>
+      </div>
+
+      <div className="flex w-full flex-col gap-4 lg:flex-row">
         {/* Left: preview + details */}
         <div className="flex w-full min-w-0 flex-1 flex-col gap-4">
           <SkinPreview skin={skin} />
-          <SkinDetails skin={skin} />
+          <EntityDetails kind="skin" entity={skin} />
         </div>
 
-        {/* Right: players + commands */}
+        {/* Right: users + commands */}
         <div className="flex w-full min-w-0 flex-col gap-4 lg:max-w-xl">
-          <SkinPlayers skin={skin} />
+          <EntityPlayers
+            kind="skin"
+            accounts={skin.accountsSeenUsing ?? []}
+            currentOwners={skin.currentOwners ?? 0}
+          />
           <SkinHeadCommands skin={skin} />
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

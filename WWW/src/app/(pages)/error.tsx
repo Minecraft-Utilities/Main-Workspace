@@ -1,8 +1,8 @@
 "use client";
 
-import SimpleLink from "@/components/simple-link";
 import { Button } from "@/components/ui/button";
 import { HomeIcon } from "lucide-react";
+import Link from "next/link";
 import { useEffect } from "react";
 
 export default function PagesError({
@@ -29,15 +29,12 @@ export default function PagesError({
           <Button size="lg" variant="outline" onClick={reset}>
             Try again
           </Button>
-          <SimpleLink href="/">
-            <Button
-              size="lg"
-              className="border-primary/30 bg-primary/5 text-primary hover:border-primary/50 hover:bg-primary/10"
-            >
-              <HomeIcon className="mr-2 size-5" />
+          <Button asChild size="lg">
+            <Link href="/">
+              <HomeIcon className="size-5" />
               Return Home
-            </Button>
-          </SimpleLink>
+            </Link>
+          </Button>
         </div>
       </div>
     </div>

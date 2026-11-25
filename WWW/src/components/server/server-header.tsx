@@ -1,3 +1,4 @@
+import { PageTitle } from "@/components/page-shell";
 import type { BedrockServer, JavaServer, Platform } from "mcutils-js-api";
 import Image from "next/image";
 
@@ -7,25 +8,25 @@ interface ServerHeaderProps {
 }
 
 export default function ServerHeader({ server, edition }: ServerHeaderProps) {
-  return (
-    <header className="flex min-w-0 flex-1 flex-col items-center gap-4">
-      <div className="flex flex-col items-center gap-4 md:flex-row">
-        {edition === "JAVA" && (server as JavaServer).favicon?.base64 && (
-          <Image
-            src={(server as JavaServer).favicon!.base64!}
-            alt={`${server.hostname} favicon`}
-            width={64}
-            height={64}
-            className="rounded-md"
-            priority
-            fetchPriority="high"
-          />
-        )}
+  const favicon = edition === "JAVA" ? (server as JavaServer).favicon?.base64 : undefined;
+  const name = server.registryEntry?.displayName ?? server.hostname;
 
-        <h1 className="text-foreground min-w-0 text-center text-2xl font-bold tracking-tight wrap-break-word md:text-4xl">
-          {server.registryEntry?.displayName ?? server.hostname}
-        </h1>
-      </div>
-    </header>
+  return (
+    <div className="flex w-full min-w-0 items-center gap-3 sm:gap-4">
+      {favicon && (
+        <Image
+          src={favicon}
+          alt=""
+          width={64}
+          height={64}
+          className="size-14 shrink-0 rounded-md"
+          priority
+          fetchPriority="high"
+        />
+      )}
+      <PageTitle className="min-w-0 flex-1">
+        <span className="block wrap-break-word">{name}</span>
+      </PageTitle>
+    </div>
   );
 }

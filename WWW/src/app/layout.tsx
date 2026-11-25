@@ -1,4 +1,5 @@
 import { env } from "@/common/env";
+import { SITE_DESCRIPTION } from "@/common/site";
 import { isProduction } from "@/common/utils";
 import { ViewportProvider } from "@/components/context/viewport-context";
 import Footer from "@/components/footer";
@@ -21,8 +22,7 @@ export const metadata: Metadata = {
     default: "MC Utils: Minecraft Player & Server Lookup",
     template: "%s | MC Utils",
   },
-  description:
-    "Look up any Minecraft player by username or UUID: view skins, capes, and profile history. Check Java and Bedrock server status, player counts, and more.",
+  description: SITE_DESCRIPTION,
   keywords: [
     "Minecraft player lookup",
     "Minecraft skin viewer",
@@ -69,6 +69,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <QueryProvider>
         <ViewportProvider>
           <body className={`${siteFont.className} flex min-h-full w-full flex-col antialiased`}>
+            <a
+              href="#main-content"
+              className="bg-background text-foreground ring-ring sr-only rounded-md px-4 py-2 text-sm font-medium shadow-md focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:ring-2"
+            >
+              Skip to content
+            </a>
             <Navbar />
             <main id="main-content" className="relative flex min-h-0 w-full flex-1 flex-col" tabIndex={-1}>
               <Toaster />

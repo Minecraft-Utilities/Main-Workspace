@@ -1,42 +1,28 @@
+import { PageShell } from "@/components/page-shell";
 import CapeHeaderSkeleton from "@/components/skeleton/cape/cape-header-skeleton";
-import CapePlayersSkeleton from "@/components/skeleton/cape/cape-players-skeleton";
-import Skeleton from "@/components/skeleton/ui/skeleton";
-import Card, { CardContent, CardHeader } from "@/components/ui/card";
+import EntityDetailsSkeleton from "@/components/skeleton/entity/entity-details-skeleton";
+import EntityPlayersSkeleton from "@/components/skeleton/entity/entity-players-skeleton";
+import PreviewSkeleton from "@/components/skeleton/entity/preview-skeleton";
 
 export default function CapeLoading() {
   return (
-    <div
-      className="mt-10 flex w-full flex-col items-center justify-center gap-10"
-      aria-live="polite"
-      aria-busy="true"
-    >
-      <CapeHeaderSkeleton />
+    <PageShell>
+      <div className="flex w-full flex-col items-center gap-10" aria-live="polite" aria-busy="true">
+        <CapeHeaderSkeleton />
 
-      <div className="flex w-full max-w-[980px] flex-col gap-4 lg:flex-row">
-        {/* Left: preview + details */}
-        <div className="flex w-full min-w-0 flex-1 flex-col gap-4">
-          <Card className="h-105 w-full">
-            <CardContent className="flex items-center justify-center p-4">
-              <Skeleton className="h-96 w-full" />
-            </CardContent>
-          </Card>
+        <div className="flex w-full flex-col gap-4 lg:flex-row">
+          {/* Left: preview + details */}
+          <div className="flex w-full min-w-0 flex-1 flex-col gap-4">
+            <PreviewSkeleton />
+            <EntityDetailsSkeleton />
+          </div>
 
-          <Card className="h-fit w-full overflow-hidden p-0">
-            <CardHeader>Details</CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <Skeleton className="h-5 w-full rounded" />
-              <Skeleton className="h-5 w-2/3 rounded" />
-              <Skeleton className="h-5 w-3/4 rounded" />
-              <Skeleton className="h-5 w-1/2 rounded" />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right: owners */}
-        <div className="flex w-full min-w-0 flex-col gap-4 lg:max-w-xl">
-          <CapePlayersSkeleton />
+          {/* Right: wearers */}
+          <div className="flex w-full min-w-0 flex-col gap-4 lg:max-w-xl">
+            <EntityPlayersSkeleton />
+          </div>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

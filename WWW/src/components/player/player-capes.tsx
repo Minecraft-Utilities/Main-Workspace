@@ -23,7 +23,14 @@ export default function PlayerCapes({ player }: PlayerCapesProps) {
     [];
 
   if (capes.length === 0) {
-    return null;
+    return (
+      <Card className="h-fit min-w-48 overflow-hidden p-0">
+        <CardHeader>Capes (0)</CardHeader>
+        <CardContent className="flex h-full items-center justify-center gap-2">
+          <p className="text-muted-foreground py-2 text-center text-sm">No capes recorded yet.</p>
+        </CardContent>
+      </Card>
+    );
   }
 
   function handleCapeHoverEnter(cape: (typeof capes)[number]) {
@@ -40,46 +47,52 @@ export default function PlayerCapes({ player }: PlayerCapesProps) {
   return (
     <Card className="h-fit min-w-48 overflow-hidden p-0">
       <CardHeader>Capes ({capes.length})</CardHeader>
-      <CardContent className="flex h-full items-center justify-center gap-2">
+      <CardContent className="flex h-full flex-wrap items-center justify-center gap-2">
         {capes.map(cape => {
           const isSelected = selectedCape?.textureId === cape.textureId;
+          const capeLabel = cape.name ? `${cape.name} Cape` : "Unknown Cape";
 
           return (
-            <SimpleTooltip
-              key={cape.textureId}
-              display={
-                <div className="flex flex-col gap-2">
-                  <p className={cn("text-sm font-medium", isSelected ? "text-primary" : "")}>
-                    {isSelected ? "Currently selected" : cape.name ? `${cape.name} Cape` : "Unknown Cape"}
-                  </p>
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center justify-between gap-4 text-xs">
-                      <span className="text-muted-foreground">First Seen</span>
-                      <span className="font-medium">
-                        <TimeAgo date={new Date(cape.firstSeen)} />
-                      </span>
+            <div key={cape.textureId} className="w-10 shrink-0">
+              <SimpleTooltip
+                display={
+                  <div className="flex flex-col gap-2">
+                    <p className={cn("text-sm font-medium", isSelected ? "text-primary" : "")}>
+                      {isSelected ? "Currently selected" : `${capeLabel} - Click to preview`}
+                    </p>
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center justify-between gap-4 text-xs">
+                        <span className="text-muted-foreground">First Seen</span>
+                        <span className="font-medium">
+                          <TimeAgo date={new Date(cape.firstSeen)} />
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              }
-            >
-              <button
-                onClick={() => setSelectedCape(cape)}
-                onMouseEnter={() => handleCapeHoverEnter(cape)}
-                onMouseLeave={handleCapeHoverLeave}
+                }
               >
-                <Image
-                  src={cape.parts.FRONT}
-                  alt={`${player.username} cape`}
-                  width={64 * CAPE_ASPECT_RATIO}
-                  height={64}
-                  className={cn(
-                    "h-16 rounded-sm object-cover",
-                    isSelected ? "border-primary border-2" : ""
-                  )}
-                />
-              </button>
-            </SimpleTooltip>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCape(cape)}
+                  onMouseEnter={() => handleCapeHoverEnter(cape)}
+                  onMouseLeave={handleCapeHoverLeave}
+                  aria-pressed={isSelected}
+                  aria-label={`Preview ${capeLabel}`}
+                  className="focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+                >
+                  <Image
+                    src={cape.parts.FRONT}
+                    alt={`${player.username}'s ${capeLabel}`}
+                    width={64 * CAPE_ASPECT_RATIO}
+                    height={64}
+                    className={cn(
+                      "h-16 rounded-sm object-cover ring-2",
+                      isSelected ? "ring-primary" : "ring-transparent"
+                    )}
+                  />
+                </button>
+              </SimpleTooltip>
+            </div>
           );
         })}
       </CardContent>

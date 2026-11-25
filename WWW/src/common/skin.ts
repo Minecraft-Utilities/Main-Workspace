@@ -5,7 +5,9 @@
  * @returns the base64 string
  */
 export function encodeSkinTextures(textureId: string) {
-  return btoa(JSON.stringify({ textures: { SKIN: { url: `http://textures.minecraft.net/texture/${textureId}` } } }));
+  return btoa(
+    JSON.stringify({ textures: { SKIN: { url: `http://textures.minecraft.net/texture/${textureId}` } } })
+  );
 }
 
 /**

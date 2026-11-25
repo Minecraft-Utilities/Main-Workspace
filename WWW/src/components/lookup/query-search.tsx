@@ -10,13 +10,17 @@ import { useDebounce } from "@uidotdev/usehooks";
 import { Clock, Loader2, Search, Server, User, X } from "lucide-react";
 import type { BasicPlayer, ErrorResponse, Platform, ServerRegistryEntry } from "mcutils-js-api";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import PlayerLookupEntry from "../player/player-lookup-entry";
 import ServerLookupEntry from "../server/server-lookup-entry";
 import { Button } from "../ui/button";
+import { lookupRowClassName } from "./lookup-row";
 import ServerEditionDialog from "./server-edition-dialog";
+
+export const QUERY_SEARCH_PLACEHOLDER = "Search a player, UUID, or server";
+export const QUERY_SEARCH_VALIDATION_MESSAGE = "Enter a player name, UUID, or server address";
 
 const HISTORY_MAX = 10;
 
@@ -64,7 +68,7 @@ const querySearchSchema = z.object({
   query: z
     .string()
     .transform(s => s.trim())
-    .pipe(z.string().min(1, "Enter a username, UUID, or server address")),
+    .pipe(z.string().min(1, QUERY_SEARCH_VALIDATION_MESSAGE)),
 });
 
 type QuerySearchValues = z.infer<typeof querySearchSchema>;
@@ -74,18 +78,22 @@ export interface QuerySearchHandle {
 }
 
 export interface QuerySearchProps {
-  landingPage?: boolean;
+  showSubmit?: boolean;
   className?: string;
   placeholder?: string;
   autoFocus?: boolean;
+  /**
+   * Notification hook for callers that mirror the lookup error elsewhere.
+   * The error is always rendered inline under the input, so do not render it twice.
+   */
   setQueryError?: (invalid: ErrorResponse | undefined) => void;
   ref?: React.Ref<QuerySearchHandle>;
 }
 
 export default function QuerySearch({
-  landingPage,
+  showSubmit = false,
   className,
-  placeholder = "Query...",
+  placeholder = QUERY_SEARCH_PLACEHOLDER,
   autoFocus,
   setQueryError,
   ref,
@@ -98,6 +106,7 @@ export default function QuerySearch({
   const [serverPopoverOpen, setServerPopoverOpen] = useState(false);
   const [history, setHistory] = useLocalStorage<HistoryEntry[]>("search-history", []);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const errorId = useId();
 
   const addEntry = useCallback(
     (entry: HistoryEntry) => {
@@ -271,79 +280,84 @@ export default function QuerySearch({
       }}
     >
       <PopoverAnchor asChild>
-        <form
-          role="search"
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col items-center gap-2 md:flex-row md:gap-0"
-        >
-          <InputGroup className={cn("w-full", className)}>
-            <Controller
-              name="query"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <InputGroupInput
-                  {...field}
-                  ref={node => {
-                    field.ref(node);
-                    inputRef.current = node;
-                  }}
-                  type="text"
-                  placeholder={placeholder}
-                  className="text-xs md:text-sm"
-                  aria-invalid={fieldState.invalid || !!lookupError}
+        <form role="search" onSubmit={form.handleSubmit(onSubmit)} className="flex w-full flex-col gap-2">
+          <div className="flex flex-col items-center gap-2 md:flex-row md:gap-0">
+            <InputGroup className={cn("w-full", className)}>
+              <Controller
+                name="query"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <InputGroupInput
+                    {...field}
+                    ref={node => {
+                      field.ref(node);
+                      inputRef.current = node;
+                    }}
+                    type="text"
+                    placeholder={placeholder}
+                    className="text-xs md:text-sm"
+                    aria-invalid={fieldState.invalid || !!lookupError}
+                    aria-describedby={lookupError ? errorId : undefined}
+                    disabled={isLookupLoading}
+                    onFocus={() => setServerPopoverOpen(true)}
+                    onChange={e => {
+                      field.onChange(e);
+                      if (e.target.value.trim()) setServerPopoverOpen(true);
+                      if (lookupError) clearError();
+                    }}
+                  />
+                )}
+              />
+
+              <InputGroupAddon>
+                {isLookupLoading ? (
+                  <Loader2 className="text-muted-foreground size-4 animate-spin" />
+                ) : (
+                  <Search className="text-muted-foreground size-4" />
+                )}
+              </InputGroupAddon>
+
+              <InputGroupAddon align="inline-end" className="min-w-9">
+                <InputGroupButton
+                  type="button"
+                  size="icon-xs"
+                  variant="ghost"
+                  aria-label="Clear search"
                   disabled={isLookupLoading}
-                  onFocus={() => setServerPopoverOpen(true)}
-                  onChange={e => {
-                    field.onChange(e);
-                    if (e.target.value.trim()) setServerPopoverOpen(true);
-                    if (lookupError) clearError();
+                  className={cn(queryValue.length === 0 && "pointer-events-none invisible")}
+                  onClick={() => {
+                    form.setValue("query", "");
+                    clearError();
                   }}
-                />
-              )}
-            />
+                >
+                  <X className="size-4" />
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
 
-            <InputGroupAddon>
-              {isLookupLoading ? (
-                <Loader2 className="text-muted-foreground size-4 animate-spin" />
-              ) : (
-                <Search className="text-muted-foreground size-4" />
-              )}
-            </InputGroupAddon>
-
-            <InputGroupAddon align="inline-end" className="min-w-9">
-              <InputGroupButton
-                type="button"
-                size="icon-xs"
-                variant="ghost"
-                aria-label="Clear search"
+            {showSubmit && (
+              <Button
+                type="submit"
+                className="block w-full text-xs md:hidden md:text-sm"
                 disabled={isLookupLoading}
-                className={cn(queryValue.length === 0 && "pointer-events-none invisible")}
-                onClick={() => {
-                  form.setValue("query", "");
-                  clearError();
-                }}
               >
-                <X className="size-4" />
-              </InputGroupButton>
-            </InputGroupAddon>
-          </InputGroup>
+                Search
+              </Button>
+            )}
 
-          {landingPage && (
-            <Button
-              type="submit"
-              className="block w-full text-xs md:hidden md:text-sm"
-              disabled={isLookupLoading}
-            >
-              Search
-            </Button>
+            <ServerEditionDialog
+              open={serverDialogOpen}
+              onOpenChange={setServerDialogOpen}
+              serverAddress={pendingServer}
+              onSelectEdition={handleServerEdition}
+            />
+          </div>
+
+          {lookupError && (
+            <p id={errorId} role="alert" className="text-destructive px-1 text-left text-xs leading-snug">
+              {lookupError.message}
+            </p>
           )}
-
-          <ServerEditionDialog
-            open={serverDialogOpen}
-            onOpenChange={setServerDialogOpen}
-            serverAddress={pendingServer}
-            onSelectEdition={handleServerEdition}
-          />
         </form>
       </PopoverAnchor>
       <PopoverContent
@@ -364,7 +378,7 @@ export default function QuerySearch({
                   <li key={entry.path} className="flex items-center gap-1">
                     <button
                       type="button"
-                      className="border-border/60 bg-muted/30 hover:border-border hover:bg-accent flex min-w-0 flex-1 items-center gap-3 rounded-md border px-3 py-2.5 text-left text-sm transition-colors outline-none"
+                      className={cn(lookupRowClassName, "min-w-0 flex-1")}
                       onClick={() => {
                         addEntry(entry);
                         router.push(entry.path);
@@ -377,7 +391,7 @@ export default function QuerySearch({
                     <button
                       type="button"
                       aria-label={`Remove ${entry.query} from history`}
-                      className="text-muted-foreground hover:text-foreground shrink-0 rounded p-1"
+                      className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 shrink-0 rounded p-1 outline-none focus-visible:ring-2"
                       onClick={() => removeEntry(entry.path)}
                     >
                       <X className="size-3.5" />

@@ -1,3 +1,4 @@
+import { PageShell } from "@/components/page-shell";
 import PlayerCapesCardSkeleton from "@/components/skeleton/player/player-capes-card-skeleton";
 import PlayerDetailsSkeleton from "@/components/skeleton/player/player-details-skeleton";
 import PlayerHeaderSkeleton from "@/components/skeleton/player/player-header-skeleton";
@@ -7,8 +8,8 @@ import PlayerUsernameHistorySkeleton from "@/components/skeleton/player/player-u
 
 export default function PlayerLoading() {
   return (
-    <div className="mt-10 flex w-full flex-col items-center gap-10" aria-live="polite" aria-busy="true">
-      <div className="flex w-full max-w-[980px] flex-col gap-10">
+    <PageShell>
+      <div className="flex w-full min-w-0 flex-col gap-10" aria-live="polite" aria-busy="true">
         <PlayerHeaderSkeleton />
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
@@ -24,6 +25,6 @@ export default function PlayerLoading() {
           </aside>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

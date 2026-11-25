@@ -1,5 +1,5 @@
 import { cn } from "@/common/utils";
-import CopyLink from "@/components/copy-link";
+import { CopyButton } from "@/components/copy-button";
 import SimpleTooltip from "@/components/simple-tooltip";
 import { Info } from "lucide-react";
 import { ReactNode } from "react";
@@ -51,7 +51,7 @@ export function ProfileCopyableValue({ text }: { text: string }) {
   return (
     <div className="flex w-full min-w-0 items-center gap-1.5">
       <span className="text-foreground/75 min-w-0 flex-1 truncate font-normal">{text}</span>
-      <CopyLink text={text} className="ml-auto shrink-0" />
+      <CopyButton value={text} label="Copy" variant="inline" className="ml-auto shrink-0" />
     </div>
   );
 }

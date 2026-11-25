@@ -1,14 +1,23 @@
+import { env } from "@/common/env";
 import { capeRenderUrl, mcUtilsApi } from "@/common/mc-utils";
-import OwnerCount from "@/components/owner-count";
-import SimpleLink from "@/components/simple-link";
-import Card, { CardContent } from "@/components/ui/card";
-import { Metadata } from "next";
+import { EmptyState } from "@/components/empty-state";
+import { MEDIA_GRID, MediaCard } from "@/components/media-card";
+import { PageShell, PageTitle } from "@/components/page-shell";
+import Pagination from "@/components/ui/pagination";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
+const DESCRIPTION = "Browse every known cape in Minecraft and the players who own it.";
+
 export const metadata: Metadata = {
-  title: "Capes",
-  description: "A list of all known capes in Minecraft",
+  title: "Minecraft Capes",
+  description: DESCRIPTION,
+  openGraph: {
+    title: "Minecraft Capes",
+    description: DESCRIPTION,
+    url: `${env.NEXT_PUBLIC_BASE_URL}/capes`,
+  },
 };
 
 export default async function CapesPage({ params }: PageProps<"/capes/[[...query]]">) {
@@ -19,45 +28,36 @@ export default async function CapesPage({ params }: PageProps<"/capes/[[...query
   const isEmpty = !capes || capes.items.length === 0;
 
   return (
-    <div className="mt-10 flex w-full flex-col items-center justify-center gap-10">
-      <header className="w-full max-w-[980px]">
-        <h1 className="text-foreground text-4xl font-bold tracking-tight">Minecraft Capes</h1>
-      </header>
+    <PageShell>
+      <PageTitle>Minecraft Capes</PageTitle>
 
       {isEmpty ? (
-        <Card className="w-full max-w-md">
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">No capes found.</p>
-          </CardContent>
-        </Card>
+        <EmptyState title="No capes found" description="Try again in a moment." />
       ) : (
-        <div className="w-full max-w-[980px]">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+        <div className="flex w-full flex-col gap-6">
+          <div className={MEDIA_GRID}>
             {capes.items.map(cape => (
-              <SimpleLink key={cape.id} href={`/cape/${cape.id}`} className="group block w-full">
-                <Card className="overflow-hidden transition-transform duration-200 hover:-translate-y-0.5">
-                  <CardContent className="relative flex min-h-0 flex-1 flex-col items-center justify-center p-0">
-                    <div className="flex items-center justify-center px-4 pt-4 pb-15">
-                      <img
-                        src={capeRenderUrl(cape.id)}
-                        className="object-fit mx-auto h-46"
-                        alt={`Cape ${cape.id}`}
-                        sizes="(max-width: 640px) 50vw, 120px"
-                      />
-                    </div>
-                    <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-0.5 bg-linear-to-t from-black/70 to-transparent px-3 pt-8 pb-3">
-                      <p className="w-full truncate text-center text-sm font-medium text-white">
-                        {cape.name ?? "Unknown Cape"}
-                      </p>
-                      <OwnerCount count={cape.uniqueOwners} />
-                    </div>
-                  </CardContent>
-                </Card>
-              </SimpleLink>
+              <MediaCard
+                key={cape.id}
+                href={`/cape/${cape.id}`}
+                imageUrl={capeRenderUrl(cape.id)}
+                alt={cape.name ?? "Minecraft Cape"}
+                caption={cape.name ?? "Unknown Cape"}
+                count={cape.uniqueOwners}
+              />
             ))}
+          </div>
+
+          <div className="flex justify-center">
+            <Pagination
+              page={page}
+              totalItems={capes.totalItems}
+              itemsPerPage={capes.itemsPerPage}
+              basePath="/capes"
+            />
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

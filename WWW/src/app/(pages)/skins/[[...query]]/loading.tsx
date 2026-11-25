@@ -1,42 +1,40 @@
+import { MEDIA_GRID } from "@/components/media-card";
+import { PageShell, PageTitle } from "@/components/page-shell";
 import SkinCardSkeleton from "@/components/skeleton/skins/skin-card-skeleton";
 import PaginationSkeleton from "@/components/skeleton/ui/pagination-skeleton";
-import { Button } from "@/components/ui/button";
-import { SKIN_SORT_OPTIONS } from "./page";
+import Skeleton from "@/components/skeleton/ui/skeleton";
+import { SKIN_SORT_OPTIONS } from "@/components/skins/skin-sort-options";
 
 export default function SkinsLoading() {
   return (
-    <div
-      className="mt-10 flex w-full flex-col items-center justify-center gap-10"
-      aria-live="polite"
-      aria-busy="true"
-    >
-      <header className="w-full max-w-[980px]">
-        <h1 className="text-foreground text-4xl font-bold tracking-tight">Minecraft Skins</h1>
-      </header>
+    <div aria-live="polite" aria-busy="true">
+      <PageShell>
+        <PageTitle>Minecraft Skins</PageTitle>
 
-      <div className="w-full max-w-[980px]">
-        <div className="mb-6 flex flex-col items-start gap-2">
-          <h2 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">Sort by</h2>
-          <div className="border-border bg-background/60 inline-flex flex-wrap items-center gap-1 rounded-md border p-1 shadow-sm">
-            {Object.entries(SKIN_SORT_OPTIONS).map(([key, option]) => (
-              <Button key={key} size="sm" variant="ghost" disabled>
-                {option.icon}
-                {option.label}
-              </Button>
+        <div className="flex w-full flex-col gap-6">
+          <div className="flex flex-col items-start gap-2">
+            <h2 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">Sort by</h2>
+            <div
+              className="border-border bg-background/60 inline-flex flex-wrap items-center gap-1 rounded-md border p-1 shadow-sm"
+              aria-hidden="true"
+            >
+              {Object.keys(SKIN_SORT_OPTIONS).map(key => (
+                <Skeleton key={key} className="h-8 w-24 rounded-md" />
+              ))}
+            </div>
+          </div>
+
+          <div className={MEDIA_GRID}>
+            {Array.from({ length: 25 }).map((_, i) => (
+              <SkinCardSkeleton key={i} />
             ))}
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
-          {Array.from({ length: 25 }).map((_, i) => (
-            <SkinCardSkeleton key={i} />
-          ))}
+          <div className="flex justify-center">
+            <PaginationSkeleton />
+          </div>
         </div>
-
-        <div className="mt-6 flex justify-center">
-          <PaginationSkeleton />
-        </div>
-      </div>
+      </PageShell>
     </div>
   );
 }

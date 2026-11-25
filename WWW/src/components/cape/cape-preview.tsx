@@ -9,12 +9,18 @@ interface CapePreviewProps {
 }
 
 export default function CapePreview({ cape }: CapePreviewProps) {
+  const capeName = cape.name ?? "Unknown Cape";
+
   return (
-    <Card className="h-105 w-full">
+    <Card className="min-h-105 w-full">
       <CardContent className="group relative flex items-center justify-center p-4">
-        <img src={capeRenderUrl(cape.id)} alt={cape.name ?? `Cape ${cape.id}`} className="h-96" />
-        <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
-          <DownloadFileButton href={cape.textureUrl} filename={`${cape.textureId}.png`}>
+        <img src={capeRenderUrl(cape.id)} alt={capeName} className="h-96" />
+        <div className="absolute top-2 right-2">
+          <DownloadFileButton
+            href={cape.textureUrl}
+            filename={`${cape.textureId}.png`}
+            label={`Download ${capeName} texture`}
+          >
             <DownloadIcon className="size-4" />
           </DownloadFileButton>
         </div>

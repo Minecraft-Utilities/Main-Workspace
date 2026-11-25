@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { env } from "./env";
+import { formatDate } from "./time-utils";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -87,22 +88,6 @@ export function capitalize(string: string): string {
 }
 
 /**
- * Returns a random subset of the given array (Fisher–Yates shuffle, then slice).
- *
- * @param array the source array
- * @param count max number of entries to return
- * @returns up to `count` random entries
- */
-export function getRandomEntries<T>(array: T[], count: number): T[] {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled.slice(0, count);
-}
-
-/**
  * Truncates a string to the given length.
  *
  * @param string the string to truncate
@@ -111,4 +96,14 @@ export function getRandomEntries<T>(array: T[], count: number): T[] {
  */
 export function truncateString(string: string, length: number): string {
   return string.length > length ? string.substring(0, length) + "..." : string;
+}
+
+/**
+ * Formats a full UTC timestamp for detail tooltips.
+ *
+ * @param date the date to format
+ * @returns the timestamp in the same format as the name history
+ */
+export function formatFullTimestamp(date: Date | string | number): string {
+  return formatDate(new Date(date), "Do MMMM, YYYY HH:mm a");
 }

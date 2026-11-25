@@ -1,23 +1,26 @@
+import { MEDIA_GRID } from "@/components/media-card";
+import { PageShell, PageTitle } from "@/components/page-shell";
 import CapeCardSkeleton from "@/components/skeleton/capes/cape-card-skeleton";
+import PaginationSkeleton from "@/components/skeleton/ui/pagination-skeleton";
 
 export default function CapesLoading() {
   return (
-    <div
-      className="mt-10 flex w-full flex-col items-center justify-center gap-10"
-      aria-live="polite"
-      aria-busy="true"
-    >
-      <header className="w-full max-w-[980px]">
-        <h1 className="text-foreground text-4xl font-bold tracking-tight">Minecraft Capes</h1>
-      </header>
+    <div aria-live="polite" aria-busy="true">
+      <PageShell>
+        <PageTitle>Minecraft Capes</PageTitle>
 
-      <div className="w-full max-w-[980px]">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
-          {Array.from({ length: 25 }).map((_, i) => (
-            <CapeCardSkeleton key={i} />
-          ))}
+        <div className="flex w-full flex-col gap-6">
+          <div className={MEDIA_GRID}>
+            {Array.from({ length: 25 }).map((_, i) => (
+              <CapeCardSkeleton key={i} />
+            ))}
+          </div>
+
+          <div className="flex justify-center">
+            <PaginationSkeleton />
+          </div>
         </div>
-      </div>
+      </PageShell>
     </div>
   );
 }

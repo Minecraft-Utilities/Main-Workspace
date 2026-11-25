@@ -1,26 +1,26 @@
+import { env } from "@/common/env";
 import { mcUtilsApi } from "@/common/mc-utils";
-import OwnerCount from "@/components/owner-count";
-import SimpleLink from "@/components/simple-link";
+import { EmptyState } from "@/components/empty-state";
+import { MEDIA_GRID, MediaCard } from "@/components/media-card";
+import { PageShell, PageTitle } from "@/components/page-shell";
+import { isSkinSort, SKIN_SORT_OPTIONS } from "@/components/skins/skin-sort-options";
 import { Button } from "@/components/ui/button";
-import Card, { CardContent } from "@/components/ui/card";
 import Pagination from "@/components/ui/pagination";
-import { Award, Clock, TrendingUpIcon } from "lucide-react";
-import type { SkinSort } from "mcutils-js-api";
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { ReactNode } from "react";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Skins",
-  description: "The list of all seen skins for players",
-};
+const DESCRIPTION = "Browse Minecraft player skins sorted by trending, top, or latest.";
 
-export const SKIN_SORT_OPTIONS: Record<SkinSort, { label: string; icon: ReactNode }> = {
-  TRENDING: { label: "Trending", icon: <TrendingUpIcon /> },
-  TOP: { label: "Top", icon: <Award /> },
-  LATEST: { label: "Latest", icon: <Clock /> },
+export const metadata: Metadata = {
+  title: "Minecraft Skins",
+  description: DESCRIPTION,
+  openGraph: {
+    title: "Minecraft Skins",
+    description: DESCRIPTION,
+    url: `${env.NEXT_PUBLIC_BASE_URL}/skins`,
+  },
 };
 
 export default async function SkinsPage({ params }: PageProps<"/skins/[[...query]]">) {
@@ -28,28 +28,22 @@ export default async function SkinsPage({ params }: PageProps<"/skins/[[...query
 
   const rawFirst = query?.[0];
   const rawSort = rawFirst?.toUpperCase();
-  const isSort = rawSort !== undefined && Object.keys(SKIN_SORT_OPTIONS).includes(rawSort);
-  const sort = (isSort ? rawSort : "TRENDING") as SkinSort;
-  const page = Number(isSort ? (query!.length >= 2 ? query![1] : "1") : (rawFirst ?? "1"));
+  const hasSort = isSkinSort(rawSort);
+  const sort = hasSort ? rawSort : "TRENDING";
+  const page = Number(hasSort ? (query!.length >= 2 ? query![1] : "1") : (rawFirst ?? "1"));
 
   const { data: skins } = await mcUtilsApi.skin().list(page, sort);
   const isEmpty = !skins || skins.items.length === 0;
 
   return (
-    <div className="mt-10 flex w-full flex-col items-center justify-center gap-10">
-      <header className="w-full max-w-[980px]">
-        <h1 className="text-foreground text-4xl font-bold tracking-tight">Minecraft Skins</h1>
-      </header>
+    <PageShell>
+      <PageTitle>Minecraft Skins</PageTitle>
 
       {isEmpty ? (
-        <Card className="w-full max-w-md">
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">No skins found.</p>
-          </CardContent>
-        </Card>
+        <EmptyState title="No skins found" description="Try again in a moment." />
       ) : (
-        <div className="w-full max-w-[980px]">
-          <div className="mb-6 flex flex-col items-start gap-2">
+        <div className="flex w-full flex-col gap-6">
+          <div className="flex flex-col items-start gap-2">
             <h2
               id="skin-sort-label"
               className="text-muted-foreground text-xs font-medium tracking-wider uppercase"
@@ -78,38 +72,28 @@ export default async function SkinsPage({ params }: PageProps<"/skins/[[...query
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+          <div className={MEDIA_GRID}>
             {skins.items.map(skin => (
-              <SimpleLink key={skin.id} href={`/skin/${skin.id}`} className="group block w-full">
-                <Card className="overflow-hidden transition-transform duration-200 hover:-translate-y-0.5">
-                  <CardContent className="relative flex min-h-0 flex-1 flex-col items-center justify-center p-0">
-                    <div className="flex items-center justify-center px-4 pt-4 pb-10">
-                      <img
-                        src={skin.parts.FULLBODY_ISO_FRONT}
-                        className="object-fit mx-auto h-42"
-                        alt={`Skin ${skin.id}`}
-                        sizes="(max-width: 640px) 50vw, 120px"
-                      />
-                    </div>
-                    <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-0.5 bg-linear-to-t from-black/70 to-transparent px-3 pt-8 pb-3">
-                      <OwnerCount count={skin.uniqueOwners} name="owners" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </SimpleLink>
+              <MediaCard
+                key={skin.id}
+                href={`/skin/${skin.id}`}
+                imageUrl={skin.parts.FULLBODY_ISO_FRONT}
+                alt="Minecraft Skin"
+                count={skin.uniqueOwners}
+              />
             ))}
           </div>
 
-          <div className="mt-6 flex justify-center">
+          <div className="flex justify-center">
             <Pagination
               page={page}
-              totalItems={skins.totalItems ?? 0}
-              itemsPerPage={skins.itemsPerPage ?? 0}
+              totalItems={skins.totalItems}
+              itemsPerPage={skins.itemsPerPage}
               basePath={`/skins/${sort.toLowerCase()}`}
             />
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

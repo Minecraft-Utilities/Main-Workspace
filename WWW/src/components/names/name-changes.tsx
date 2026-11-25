@@ -2,6 +2,8 @@
 
 import { mcUtilsApi } from "@/common/mc-utils";
 import { formatDate } from "@/common/time-utils";
+import { websocketUrl } from "@/common/websocket-url";
+import { TOTAL_NAME_CHANGES_TO_SHOW } from "@/components/names/constants";
 import SimpleLink from "@/components/simple-link";
 import SimpleTooltip from "@/components/simple-tooltip";
 import TimeAgo from "@/components/time-ago";
@@ -13,7 +15,6 @@ import Image from "next/image";
 import { useEffect, useRef } from "react";
 import useWebSocket from "react-use-websocket";
 
-const TOTAL_NAME_CHANGES_TO_SHOW = 50;
 const RECENT_NAME_CHANGES_QUERY_KEY = ["recentNameChanges"] as const;
 
 export default function NameChanges({
@@ -24,10 +25,7 @@ export default function NameChanges({
   const queryClient = useQueryClient();
   const hasConnectedRef = useRef(false);
 
-  const {
-    data: nameChanges = initialNameChanges,
-    refetch,
-  } = useQuery({
+  const { data: nameChanges = initialNameChanges, refetch } = useQuery({
     queryKey: RECENT_NAME_CHANGES_QUERY_KEY,
     queryFn: async () => {
       const { data, error } = await mcUtilsApi.player().nameChanges();
@@ -37,21 +35,18 @@ export default function NameChanges({
     initialData: initialNameChanges,
   });
 
-  const { lastJsonMessage } = useWebSocket<RecentUsernameChange>(
-    "wss://mc.fascinated.cc/api/ws/name-changes",
-    {
-      reconnectAttempts: 1000000000,
-      reconnectInterval: 1000,
-      retryOnError: true,
-      onOpen: () => {
-        if (hasConnectedRef.current) {
-          void refetch();
-        } else {
-          hasConnectedRef.current = true;
-        }
-      },
-    }
-  );
+  const { lastJsonMessage } = useWebSocket<RecentUsernameChange>(websocketUrl("ws/name-changes"), {
+    reconnectAttempts: 1000000000,
+    reconnectInterval: 1000,
+    retryOnError: true,
+    onOpen: () => {
+      if (hasConnectedRef.current) {
+        void refetch();
+      } else {
+        hasConnectedRef.current = true;
+      }
+    },
+  });
 
   useEffect(() => {
     if (!lastJsonMessage) return;
@@ -63,7 +58,12 @@ export default function NameChanges({
 
   return (
     <Card className="w-full max-w-[980px] overflow-hidden p-0">
-      <CardHeader>Name Changes</CardHeader>
+      <CardHeader className="flex items-center justify-between gap-2">
+        <span>Name History</span>
+        <span className="text-muted-foreground tracking-normal normal-case">
+          Showing latest {TOTAL_NAME_CHANGES_TO_SHOW}
+        </span>
+      </CardHeader>
       <CardContent className="p-0">
         <div className="divide-border/60 divide-y">
           {nameChanges.map(change => (
@@ -101,7 +101,6 @@ export default function NameChanges({
               </SimpleTooltip>
             </div>
           ))}
-
         </div>
       </CardContent>
     </Card>
