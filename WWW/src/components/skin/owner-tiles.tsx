@@ -37,7 +37,6 @@ export default function OwnerTiles({ accounts, currentOwners, kind }: OwnerTiles
   const firstIndex = (currentPage - 1) * PAGE_SIZE;
   const visibleAccounts = filteredAccounts.slice(firstIndex, firstIndex + PAGE_SIZE);
   const query = filter.trim();
-  const hasMoreRecords = currentOwners > accounts.length;
 
   function handlePageClick(event: MouseEvent<HTMLDivElement>) {
     const anchor = (event.target as HTMLElement).closest("a");
@@ -126,24 +125,14 @@ export default function OwnerTiles({ accounts, currentOwners, kind }: OwnerTiles
           </ul>
         )}
 
-        {(totalPages > 1 || hasMoreRecords) && (
-          <div className="border-border flex flex-col gap-3 border-t px-4 py-3">
-            {hasMoreRecords ? (
-              <p className="text-muted-foreground text-xs">
-                Showing the first {formatNumberWithCommas(accounts.length)} of{" "}
-                {formatNumberWithCommas(currentOwners)} owners.
-              </p>
-            ) : null}
-            {totalPages > 1 ? (
-              <div onClickCapture={handlePageClick}>
-                <Pagination
-                  page={currentPage}
-                  totalItems={filteredAccounts.length}
-                  itemsPerPage={PAGE_SIZE}
-                  hrefForPage={target => `#owners-page-${target}`}
-                />
-              </div>
-            ) : null}
+        {totalPages > 1 && (
+          <div className="border-border border-t px-4 py-3" onClickCapture={handlePageClick}>
+            <Pagination
+              page={currentPage}
+              totalItems={filteredAccounts.length}
+              itemsPerPage={PAGE_SIZE}
+              hrefForPage={target => `#owners-page-${target}`}
+            />
           </div>
         )}
       </CardContent>
