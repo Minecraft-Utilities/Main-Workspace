@@ -1,4 +1,5 @@
 import CapeHeaderSkeleton from "@/components/skeleton/cape/cape-header-skeleton";
+import CapePlayersSkeleton from "@/components/skeleton/cape/cape-players-skeleton";
 import Skeleton from "@/components/skeleton/ui/skeleton";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
 
@@ -14,9 +15,9 @@ export default function CapeLoading() {
       <div className="flex w-full max-w-[980px] flex-col gap-4 lg:flex-row">
         {/* Left: preview + details */}
         <div className="flex w-full min-w-0 flex-1 flex-col gap-4">
-          <Card className="h-fit w-full">
+          <Card className="h-105 w-full">
             <CardContent className="flex items-center justify-center p-4">
-              <div className="bg-muted h-96 w-full rounded-xl" />
+              <Skeleton className="h-96 w-full" />
             </CardContent>
           </Card>
 
@@ -26,22 +27,14 @@ export default function CapeLoading() {
               <Skeleton className="h-5 w-full rounded" />
               <Skeleton className="h-5 w-2/3 rounded" />
               <Skeleton className="h-5 w-3/4 rounded" />
+              <Skeleton className="h-5 w-1/2 rounded" />
             </CardContent>
           </Card>
         </div>
 
-        {/* Right: players */}
+        {/* Right: owners */}
         <div className="flex w-full min-w-0 flex-col gap-4 lg:max-w-xl">
-          <Card className="h-fit w-full text-sm">
-            <CardHeader>
-              <p>Players</p>
-            </CardHeader>
-            <CardContent className="flex h-64 flex-wrap gap-2">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <Skeleton key={i} className="h-5 w-20 rounded" />
-              ))}
-            </CardContent>
-          </Card>
+          <CapePlayersSkeleton />
         </div>
       </div>
     </div>

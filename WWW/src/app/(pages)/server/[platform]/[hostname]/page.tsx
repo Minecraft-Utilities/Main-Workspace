@@ -5,6 +5,7 @@ import { ServerDetails } from "@/components/server/server-details";
 import ServerDnsRecords from "@/components/server/server-dns-records";
 import ServerHeader from "@/components/server/server-header";
 import ServerMotd from "@/components/server/server-motd";
+import ServerStatus from "@/components/server/server-status";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
 import type { Platform } from "mcutils-js-api";
 import { Metadata } from "next";
@@ -84,6 +85,9 @@ export default async function ServerPage({ params }: PageProps<"/server/[platfor
             <div className="flex flex-col gap-4">
               {/* MOTD preview (Java only) */}
               <ServerMotd server={server} edition={edition} />
+
+              {/* Status */}
+              <ServerStatus server={server} edition={edition} />
 
               {/* Details */}
               <ServerDetails server={server} edition={edition} />

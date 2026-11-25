@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
   },
   images: {
     unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "raw.githubusercontent.com",
+        pathname: "/Minecraft-Utilities/ServerRegistry/**",
+      },
+    ],
   },
   logging: {
     fetches: {

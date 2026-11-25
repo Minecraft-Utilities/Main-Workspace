@@ -36,10 +36,10 @@ export default function SkinDetails({ skin }: SkinDetailsProps) {
           </span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground text-sm">First Seen</span>
+          <span className="text-muted-foreground text-sm">First Recorded</span>
           <SimpleTooltip display={new Date(skin.firstSeen).toLocaleString()}>
             <span className="border-primary/20 bg-primary/10 cursor-default rounded-md border px-2 py-1 font-mono text-sm">
-              <TimeAgo date={new Date(skin.firstSeen)} />
+              <TimeAgo date={new Date(skin.firstSeen)} rounded />
             </span>
           </SimpleTooltip>
         </div>

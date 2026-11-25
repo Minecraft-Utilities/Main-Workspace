@@ -12,7 +12,7 @@ export default function SkinCardSkeleton() {
         <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-0.5 bg-linear-to-t from-black/70 to-transparent px-3 pt-8 pb-3">
           <div className="flex items-center gap-1">
             <UserIcon className="size-3.5 text-white/60" />
-            <Skeleton className="h-3 w-10" />
+            <Skeleton className="h-3 w-16" />
           </div>
         </div>
       </CardContent>

@@ -1,5 +1,6 @@
 import SkinHeadCommandsSkeleton from "@/components/skeleton/skin/skin-head-commands-skeleton";
 import SkinHeaderSkeleton from "@/components/skeleton/skin/skin-header-skeleton";
+import SkinPlayersSkeleton from "@/components/skeleton/skin/skin-players-skeleton";
 import Skeleton from "@/components/skeleton/ui/skeleton";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
 
@@ -27,23 +28,14 @@ export default function SkinLoading() {
               <Skeleton className="h-5 w-full rounded" />
               <Skeleton className="h-5 w-2/3 rounded" />
               <Skeleton className="h-5 w-3/4 rounded" />
+              <Skeleton className="h-5 w-1/2 rounded" />
             </CardContent>
           </Card>
         </div>
 
-        {/* Right: players + commands */}
+        {/* Right: owners + commands */}
         <div className="flex w-full min-w-0 flex-col gap-4 lg:max-w-xl">
-          <Card className="h-fit w-full text-sm">
-            <CardHeader>
-              <p>Players</p>
-            </CardHeader>
-            <CardContent className="flex h-64 flex-wrap gap-2">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <Skeleton key={i} className="h-5 w-20 rounded" />
-              ))}
-            </CardContent>
-          </Card>
-
+          <SkinPlayersSkeleton />
           <SkinHeadCommandsSkeleton />
         </div>
       </div>

@@ -15,12 +15,13 @@ export default function SkinsLoading() {
       </header>
 
       <div className="w-full max-w-[980px]">
-        <div className="mb-6 flex flex-row justify-center gap-4 sm:justify-end">
-          <div className="border-border bg-background/60 flex flex-wrap items-center justify-end gap-2 rounded-md border px-3 py-2 shadow-sm">
-            {Object.entries(SKIN_SORT_OPTIONS).map(([key, label]) => (
-              <Button key={key} variant="secondary" disabled>
-                {label.icon}
-                {label.label}
+        <div className="mb-6 flex flex-col items-start gap-2">
+          <h2 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">Sort by</h2>
+          <div className="border-border bg-background/60 inline-flex flex-wrap items-center gap-1 rounded-md border p-1 shadow-sm">
+            {Object.entries(SKIN_SORT_OPTIONS).map(([key, option]) => (
+              <Button key={key} size="sm" variant="ghost" disabled>
+                {option.icon}
+                {option.label}
               </Button>
             ))}
           </div>

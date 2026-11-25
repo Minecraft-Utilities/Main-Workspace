@@ -2,6 +2,7 @@ import { env } from "@/common/env";
 import { mcUtilsApi } from "@/common/mc-utils";
 import LandingQuerySearch from "@/components/landing/landing-query-search";
 import Statistics from "@/components/landing/statistics";
+import ToolCards from "@/components/landing/tool-cards";
 import OwnerCount from "@/components/owner-count";
 import { Button } from "@/components/ui/button";
 import Card from "@/components/ui/card";
@@ -58,8 +59,13 @@ export default async function HomePage() {
           </h1>
         </header>
 
-        <div className="flex w-full flex-col items-center gap-20">
-          <LandingQuerySearch />
+        <div className="flex w-full flex-col items-center gap-16">
+          <div className="flex w-full flex-col items-center gap-5">
+            <LandingQuerySearch />
+            <Statistics />
+          </div>
+
+          <ToolCards />
 
           {trendingSkins && trendingSkins.items.length > 0 && (
             <div className="flex w-full flex-col gap-4">
@@ -86,15 +92,13 @@ export default async function HomePage() {
                         height={128}
                         className="max-h-full max-w-full object-contain p-1"
                       />
-                      <OwnerCount count={skin.uniqueOwners} />
+                      <OwnerCount count={skin.uniqueOwners} name="owners" />
                     </Link>
                   </Card>
                 ))}
               </div>
             </div>
           )}
-
-          <Statistics />
         </div>
 
         <section className="text-muted-foreground max-w-2xl text-center text-sm leading-relaxed">

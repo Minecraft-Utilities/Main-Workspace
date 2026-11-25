@@ -1,9 +1,11 @@
 import { mcUtilsApi } from "@/common/mc-utils";
 import SimpleLink from "@/components/simple-link";
+import SimpleTooltip from "@/components/simple-tooltip";
 import SkinDetails from "@/components/skin/skin-details";
 import SkinHeadCommands from "@/components/skin/skin-head-commands";
 import SkinPlayers from "@/components/skin/skin-players";
 import SkinPreview from "@/components/skin/skin-preview";
+import { ArrowUpRightIcon } from "lucide-react";
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -57,7 +59,19 @@ export default async function SkinsPage({ params }: PageProps<"/skin/[query]">) 
       <header className="w-full max-w-[980px] text-left">
         <h1 className="text-foreground text-4xl font-bold tracking-tight">
           <span className="block sm:inline">
-            <SimpleLink href={`/player/${skin.firstSeenUsing}`}>{skin.firstSeenUsing}&apos;s Skin</SimpleLink>
+            <SimpleLink
+              href={`/player/${skin.firstSeenUsing}`}
+              title="View player"
+              className="group inline-flex items-center gap-2 underline-offset-4 hover:underline"
+            >
+              {skin.firstSeenUsing}&apos;s Skin
+              <SimpleTooltip display="View player" className="w-auto">
+                <ArrowUpRightIcon
+                  aria-hidden
+                  className="text-muted-foreground size-5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                />
+              </SimpleTooltip>
+            </SimpleLink>
           </span>
         </h1>
       </header>

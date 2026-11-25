@@ -24,7 +24,10 @@ export default function NameChanges({
   const queryClient = useQueryClient();
   const hasConnectedRef = useRef(false);
 
-  const { data: nameChanges = initialNameChanges, refetch } = useQuery({
+  const {
+    data: nameChanges = initialNameChanges,
+    refetch,
+  } = useQuery({
     queryKey: RECENT_NAME_CHANGES_QUERY_KEY,
     queryFn: async () => {
       const { data, error } = await mcUtilsApi.player().nameChanges();
@@ -65,13 +68,16 @@ export default function NameChanges({
         <div className="divide-border/60 divide-y">
           {nameChanges.map(change => (
             <div key={change.playerId} className="flex items-center gap-2 px-3 py-2">
-              <SimpleLink href={`/player/${change.newUsername}`}>
+              <SimpleLink
+                href={`/player/${change.newUsername}`}
+                className="bg-muted/40 size-[22px] shrink-0 overflow-hidden rounded-sm"
+              >
                 <Image
                   src={mcUtilsApi.player().skinUrl(change.playerId, "FACE")}
                   alt={change.newUsername}
                   width={22}
                   height={22}
-                  className="rounded-sm"
+                  className="size-[22px] rounded-sm"
                 />
               </SimpleLink>
 
@@ -90,11 +96,12 @@ export default function NameChanges({
                 display={`Name change seen on ${formatDate(new Date(change.timestamp), "Do MMMM, YYYY HH:mm a")}`}
               >
                 <span className="text-muted-foreground shrink-0 text-xs">
-                  <TimeAgo date={new Date(change.timestamp)} />
+                  <TimeAgo short date={new Date(change.timestamp)} />
                 </span>
               </SimpleTooltip>
             </div>
           ))}
+
         </div>
       </CardContent>
     </Card>

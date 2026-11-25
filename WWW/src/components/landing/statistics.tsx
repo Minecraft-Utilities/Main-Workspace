@@ -1,9 +1,9 @@
 "use client";
 
+import { ShirtIcon, UserIcon } from "lucide-react";
 import CountUp from "react-countup";
 import useWebSocket from "react-use-websocket";
-import SimpleTooltip from "../simple-tooltip";
-import Card, { CardContent, CardHeader } from "../ui/card";
+import { Tooltip } from "../ui/tooltip";
 
 export default function Statistics() {
   const { lastJsonMessage } = useWebSocket("wss://mc.fascinated.cc/api/ws/statistics", {
@@ -11,28 +11,29 @@ export default function Statistics() {
     reconnectInterval: 1000,
     retryOnError: true,
   });
-  const statistics = lastJsonMessage as { playersTracked: number; trackedSkins: number };
+  const statistics = lastJsonMessage as { playersTracked: number; trackedSkins: number } | null;
 
   return (
-    <div className="mt-8 flex w-full max-w-2xl flex-row gap-4">
-      <Card className="w-full">
-        <CardHeader>Stored Minecraft Profiles</CardHeader>
-        <CardContent className="text-xl">
-          <SimpleTooltip
-            display={<p>The number of Java Minecraft profiles that have been stored in our database.</p>}
-          >
+    <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
+      <Tooltip content={<p>The number of Java Minecraft profiles stored in our database.</p>}>
+        <span className="flex items-center gap-1.5">
+          <UserIcon className="text-primary size-4" aria-hidden />
+          <span>Stored Profiles</span>
+          <span className="text-foreground font-semibold tabular-nums">
             {statistics ? <CountUp end={statistics.playersTracked} preserveValue /> : "..."}
-          </SimpleTooltip>
-        </CardContent>
-      </Card>
-      <Card className="w-full">
-        <CardHeader>Skin Collection Size</CardHeader>
-        <CardContent className="text-xl">
-          <SimpleTooltip display={<p>The number of unique skins that have been stored in our database.</p>}>
+          </span>
+        </span>
+      </Tooltip>
+      <span className="bg-border hidden h-4 w-px sm:block" aria-hidden />
+      <Tooltip content={<p>The number of unique skins stored in our database.</p>}>
+        <span className="flex items-center gap-1.5">
+          <ShirtIcon className="text-primary size-4" aria-hidden />
+          <span>Skin Collection</span>
+          <span className="text-foreground font-semibold tabular-nums">
             {statistics ? <CountUp end={statistics.trackedSkins} preserveValue /> : "..."}
-          </SimpleTooltip>
-        </CardContent>
-      </Card>
+          </span>
+        </span>
+      </Tooltip>
     </div>
   );
 }

@@ -4,9 +4,10 @@ import { env } from "@/common/env";
 import { encodeSkinTextures } from "@/common/skin";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
 import type { Skin } from "mcutils-js-api";
-import { useState } from "react";
-import CopyTextButton from "../copy-text-button";
-import { Input } from "../ui/input";
+import { CheckIcon, CopyIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "../ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 interface SkinHeadCommandsProps {
@@ -15,6 +16,8 @@ interface SkinHeadCommandsProps {
 
 export default function SkinHeadCommands({ skin }: SkinHeadCommandsProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const commands = [
     {
@@ -31,38 +34,70 @@ export default function SkinHeadCommands({ skin }: SkinHeadCommandsProps) {
     },
   ];
 
+  const command = commands[selectedIndex].command;
+
+  useEffect(() => {
+    return () => {
+      if (resetTimer.current) {
+        clearTimeout(resetTimer.current);
+      }
+    };
+  }, []);
+
+  async function copyCommand() {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      if (resetTimer.current) {
+        clearTimeout(resetTimer.current);
+      }
+      resetTimer.current = setTimeout(() => setCopied(false), 2000);
+      toast.success("Copied to your clipboard");
+    } catch {
+      toast.error("Failed to copy");
+    }
+  }
+
   return (
     <Card>
       <CardHeader>Head Commands (for Command Blocks)</CardHeader>
-      <CardContent className="flex flex-row">
+      <CardContent className="flex flex-row items-start">
         <Select value={selectedIndex.toString()} onValueChange={value => setSelectedIndex(Number(value))}>
-          <SelectTrigger className="w-26.25 rounded-r-none">
+          <SelectTrigger className="h-9 w-26.25 rounded-r-none">
             <SelectValue placeholder={commands[selectedIndex].version} />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              {commands.map((command, index) => (
-                <SelectItem key={command.version} value={index.toString()}>
-                  {command.version}
+              {commands.map((entry, index) => (
+                <SelectItem key={entry.version} value={index.toString()}>
+                  {entry.version}
                 </SelectItem>
               ))}
             </SelectGroup>
           </SelectContent>
         </Select>
 
-        {/* Text input */}
-        <Input
-          className="rounded-l-none rounded-r-none border-x-0 text-xs break-all whitespace-pre-wrap"
-          value={commands[selectedIndex].command}
-          readOnly
-        />
+        <div
+          role="textbox"
+          tabIndex={0}
+          aria-readonly="true"
+          aria-label={`Minecraft ${commands[selectedIndex].version} head command`}
+          className="border-input h-9 min-w-0 flex-1 overflow-x-auto border-y px-3 py-2 font-mono text-xs whitespace-nowrap select-all [scrollbar-width:none]"
+        >
+          {command}
+        </div>
 
-        <CopyTextButton
-          text={commands[selectedIndex].command}
-          tooltip="Copy Command"
+        <Button
+          type="button"
           variant="outline"
-          className="size-9 rounded-l-none"
-        />
+          size="sm"
+          onClick={copyCommand}
+          aria-label={copied ? "Command copied" : "Copy command"}
+          className="h-9 shrink-0 rounded-l-none px-3"
+        >
+          {copied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
+          <span className="text-xs">{copied ? "Copied" : "Copy"}</span>
+        </Button>
       </CardContent>
     </Card>
   );

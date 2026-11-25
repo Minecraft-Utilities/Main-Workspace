@@ -10,7 +10,7 @@ import { useDebounce } from "@uidotdev/usehooks";
 import { Clock, Loader2, Search, Server, User, X } from "lucide-react";
 import type { BasicPlayer, ErrorResponse, Platform, ServerRegistryEntry } from "mcutils-js-api";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import PlayerLookupEntry from "../player/player-lookup-entry";
@@ -69,13 +69,27 @@ const querySearchSchema = z.object({
 
 type QuerySearchValues = z.infer<typeof querySearchSchema>;
 
+export interface QuerySearchHandle {
+  submit: (query: string) => void;
+}
+
 export interface QuerySearchProps {
   landingPage?: boolean;
   className?: string;
+  placeholder?: string;
+  autoFocus?: boolean;
   setQueryError?: (invalid: ErrorResponse | undefined) => void;
+  ref?: React.Ref<QuerySearchHandle>;
 }
 
-export default function QuerySearch({ landingPage, className, setQueryError }: QuerySearchProps) {
+export default function QuerySearch({
+  landingPage,
+  className,
+  placeholder = "Query...",
+  autoFocus,
+  setQueryError,
+  ref,
+}: QuerySearchProps) {
   const router = useRouter();
   const [serverDialogOpen, setServerDialogOpen] = useState(false);
   const [pendingServer, setPendingServer] = useState("");
@@ -83,6 +97,7 @@ export default function QuerySearch({ landingPage, className, setQueryError }: Q
   const [lookupError, setLookupError] = useState<ErrorResponse | undefined>(undefined);
   const [serverPopoverOpen, setServerPopoverOpen] = useState(false);
   const [history, setHistory] = useLocalStorage<HistoryEntry[]>("search-history", []);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const addEntry = useCallback(
     (entry: HistoryEntry) => {
@@ -231,6 +246,22 @@ export default function QuerySearch({ landingPage, className, setQueryError }: Q
     [router, form, addEntry]
   );
 
+  const submitQuery = useCallback(
+    (query: string) => {
+      form.setValue("query", query, { shouldValidate: true });
+      void form.handleSubmit(onSubmit)();
+    },
+    [form, onSubmit]
+  );
+
+  useImperativeHandle(ref, () => ({ submit: submitQuery }), [submitQuery]);
+
+  useEffect(() => {
+    if (autoFocus) {
+      inputRef.current?.focus();
+    }
+  }, [autoFocus]);
+
   return (
     <Popover
       open={serverPopoverOpenControlled}
@@ -252,8 +283,12 @@ export default function QuerySearch({ landingPage, className, setQueryError }: Q
               render={({ field, fieldState }) => (
                 <InputGroupInput
                   {...field}
+                  ref={node => {
+                    field.ref(node);
+                    inputRef.current = node;
+                  }}
                   type="text"
-                  placeholder="Query..."
+                  placeholder={placeholder}
                   className="text-xs md:text-sm"
                   aria-invalid={fieldState.invalid || !!lookupError}
                   disabled={isLookupLoading}

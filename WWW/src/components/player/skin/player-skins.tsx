@@ -20,6 +20,10 @@ export default function PlayerSkins({ player }: PlayerSkinsProps) {
     player.skinHistory?.sort((a, b) => new Date(b.firstSeen).getTime() - new Date(a.firstSeen).getTime()) ??
     [];
 
+  if (skins.length === 0) {
+    return null;
+  }
+
   function handleSkinHoverEnter(skin: (typeof skins)[number]) {
     if (hoverClearTimeout.current) clearTimeout(hoverClearTimeout.current);
     setHoveredSkin(skin);
@@ -68,7 +72,7 @@ export default function PlayerSkins({ player }: PlayerSkinsProps) {
                   alt={`${player.username}'s skin`}
                   width={38}
                   height={38}
-                  className={cn("rounded-sm object-cover", isSelected ? "border-primary border-2" : "")}
+                  className={cn("rounded-sm object-cover", isSelected ? "ring-primary ring-2" : "")}
                 />
               </button>
             </SimpleTooltip>

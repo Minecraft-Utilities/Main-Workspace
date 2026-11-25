@@ -11,6 +11,20 @@ type FooterLink = {
 };
 
 const links: { [category: string]: FooterLink[] } = {
+  Tools: [
+    {
+      name: "Capes",
+      href: "/capes",
+    },
+    {
+      name: "Skins",
+      href: "/skins",
+    },
+    {
+      name: "Names",
+      href: "/names",
+    },
+  ],
   Resources: [
     {
       name: "Source Code",

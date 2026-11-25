@@ -49,18 +49,29 @@ export default async function SkinsPage({ params }: PageProps<"/skins/[[...query
         </Card>
       ) : (
         <div className="w-full max-w-[980px]">
-          <div className="mb-6 flex flex-row justify-center gap-4 sm:justify-end">
-            <div className="border-border bg-background/60 flex flex-wrap items-center justify-end gap-2 rounded-md border px-3 py-2 shadow-sm">
-              {Object.entries(SKIN_SORT_OPTIONS).map(([key, label]) => (
+          <div className="mb-6 flex flex-col items-start gap-2">
+            <h2
+              id="skin-sort-label"
+              className="text-muted-foreground text-xs font-medium tracking-wider uppercase"
+            >
+              Sort by
+            </h2>
+            <div
+              role="group"
+              aria-labelledby="skin-sort-label"
+              className="border-border bg-background/60 inline-flex flex-wrap items-center gap-1 rounded-md border p-1 shadow-sm"
+            >
+              {Object.entries(SKIN_SORT_OPTIONS).map(([key, option]) => (
                 <Button
                   key={key}
                   asChild
-                  variant={sort === key ? "default" : "secondary"}
-                  aria-current={sort === key ? "page" : undefined}
+                  size="sm"
+                  variant={sort === key ? "default" : "ghost"}
+                  aria-current={sort === key ? true : undefined}
                 >
                   <Link href={`/skins/${key.toLowerCase()}`}>
-                    {label.icon}
-                    {label.label}
+                    {option.icon}
+                    {option.label}
                   </Link>
                 </Button>
               ))}
@@ -81,7 +92,7 @@ export default async function SkinsPage({ params }: PageProps<"/skins/[[...query
                       />
                     </div>
                     <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-0.5 bg-linear-to-t from-black/70 to-transparent px-3 pt-8 pb-3">
-                      <OwnerCount count={skin.uniqueOwners} />
+                      <OwnerCount count={skin.uniqueOwners} name="owners" />
                     </div>
                   </CardContent>
                 </Card>

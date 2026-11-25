@@ -18,12 +18,6 @@ export function ServerDetails({ server, edition }: ServerDetailsProps) {
         <CardHeader>Details</CardHeader>
         <CardContent className="p-3 pt-2">
           <ProfileFields>
-            <ProfileField label="Cached">
-              <ProfileValue>
-                {server.cached ? <TimeAgo date={new Date(server.cachedTime)} /> : "No"}
-              </ProfileValue>
-            </ProfileField>
-
             <ProfileField label="Hostname">
               <ProfileCopyableValue text={server.hostname} />
             </ProfileField>
@@ -53,10 +47,19 @@ export function ServerDetails({ server, edition }: ServerDetailsProps) {
                     <ProfileValue>{`${javaServer.forgeData?.mods?.length ?? 0} mods`}</ProfileValue>
                   </ProfileField>
                 )}
-                <ProfileField label="Prevents chat reports">
+                <div className="text-muted-foreground border-border/60 col-span-2 border-b pt-3 pb-1 text-xs font-semibold tracking-wider uppercase">
+                  Chat
+                </div>
+                <ProfileField
+                  label="Prevents chat reports"
+                  tooltip="When enabled, the server hides the report option for players by declaring that chat cannot be reported to Mojang."
+                >
                   <ProfileValue>{javaServer.preventsChatReports ? "Yes" : "No"}</ProfileValue>
                 </ProfileField>
-                <ProfileField label="Enforces secure chat">
+                <ProfileField
+                  label="Enforces secure chat"
+                  tooltip="When enabled, the server only accepts clients that support signed chat, so other players can verify who sent each message."
+                >
                   <ProfileValue>{javaServer.enforcesSecureChat ? "Yes" : "No"}</ProfileValue>
                 </ProfileField>
                 <ProfileField
@@ -92,6 +95,12 @@ export function ServerDetails({ server, edition }: ServerDetailsProps) {
                 <ProfileValue>{server.location.country}</ProfileValue>
               </ProfileField>
             )}
+
+            <ProfileField label="Cached">
+              <ProfileValue>
+                {server.cached ? <TimeAgo date={new Date(server.cachedTime)} /> : "No"}
+              </ProfileValue>
+            </ProfileField>
           </ProfileFields>
         </CardContent>
       </Card>

@@ -1,6 +1,7 @@
 import ServerDetailsSkeleton from "@/components/skeleton/server/server-details-skeleton";
 import ServerDnsRecordsSkeleton from "@/components/skeleton/server/server-dns-records-skeleton";
 import ServerMotdSkeleton from "@/components/skeleton/server/server-motd-skeleton";
+import ServerStatusSkeleton from "@/components/skeleton/server/server-status-skeleton";
 
 export default function ServerLoading() {
   return (
@@ -17,6 +18,7 @@ export default function ServerLoading() {
 
         <div className="flex flex-col gap-4">
           <ServerMotdSkeleton />
+          <ServerStatusSkeleton />
           <ServerDetailsSkeleton />
           <ServerDnsRecordsSkeleton />
         </div>

@@ -110,6 +110,36 @@ export function timeAgo(input: Date, maxUnits: number = 2) {
 }
 
 /**
+ * Returns the time since the input date as a single rounded unit, e.g.
+ * "3m ago" (compact) or "6 months ago" (long).
+ *
+ * @param input the date
+ * @param compact whether to use short unit names
+ * @returns the rounded time ago
+ */
+export function timeAgoRounded(input: Date, compact: boolean = true) {
+  const deltaSeconds = Math.floor((new Date().getTime() - new Date(input).getTime()) / 1000);
+
+  if (deltaSeconds <= 5) {
+    return "just now";
+  }
+
+  const units = [
+    { unit: "year", short: "y", seconds: 60 * 60 * 24 * 365 },
+    { unit: "month", short: "mo", seconds: 60 * 60 * 24 * 30 },
+    { unit: "day", short: "d", seconds: 60 * 60 * 24 },
+    { unit: "hour", short: "h", seconds: 60 * 60 },
+    { unit: "minute", short: "m", seconds: 60 },
+    { unit: "second", short: "s", seconds: 1 },
+  ];
+
+  const { unit, short, seconds } = units.find(entry => deltaSeconds >= entry.seconds) ?? units[units.length - 1];
+  const count = Math.max(1, Math.round(deltaSeconds / seconds));
+
+  return compact ? `${count}${short} ago` : `${count} ${unit}${count === 1 ? "" : "s"} ago`;
+}
+
+/**
  * Gets the amount of milliseconds ago a date was
  *
  * @param input the date
