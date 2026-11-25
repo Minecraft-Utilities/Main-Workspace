@@ -1,5 +1,5 @@
-import { env } from "@/common/env";
 import { capeRenderUrl, mcUtilsApi } from "@/common/mc-utils";
+import { buildMetadata } from "@/common/seo";
 import { EmptyState } from "@/components/empty-state";
 import { MEDIA_GRID, MediaCard } from "@/components/media-card";
 import { PageShell, PageTitle } from "@/components/page-shell";
@@ -10,19 +10,25 @@ export const dynamic = "force-dynamic";
 
 const DESCRIPTION = "Browse every known cape in Minecraft and the players who own it.";
 
-export const metadata: Metadata = {
-  title: "Minecraft Capes",
-  description: DESCRIPTION,
-  openGraph: {
+function parsePage(query: string[] | undefined): number {
+  const parsed = Number(query?.[0] ?? "1");
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+export async function generateMetadata(props: PageProps<"/capes/[[...query]]">): Promise<Metadata> {
+  const { query } = await props.params;
+  const page = parsePage(query);
+
+  return buildMetadata({
     title: "Minecraft Capes",
     description: DESCRIPTION,
-    url: `${env.NEXT_PUBLIC_BASE_URL}/capes`,
-  },
-};
+    path: page > 1 ? `/capes/${page}` : "/capes",
+  });
+}
 
 export default async function CapesPage({ params }: PageProps<"/capes/[[...query]]">) {
   const { query } = await params;
-  const page = Number(query?.[0] ?? "1");
+  const page = parsePage(query);
 
   const { data: capes } = await mcUtilsApi.cape().list(page);
   const isEmpty = !capes || capes.items.length === 0;

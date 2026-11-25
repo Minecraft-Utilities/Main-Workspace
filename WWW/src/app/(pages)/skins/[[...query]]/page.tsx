@@ -1,5 +1,5 @@
-import { env } from "@/common/env";
 import { mcUtilsApi } from "@/common/mc-utils";
+import { buildMetadata } from "@/common/seo";
 import { EmptyState } from "@/components/empty-state";
 import { MEDIA_GRID, MediaCard } from "@/components/media-card";
 import { PageShell, PageTitle } from "@/components/page-shell";
@@ -14,24 +14,32 @@ export const dynamic = "force-dynamic";
 
 const DESCRIPTION = "Browse Minecraft player skins sorted by trending, top, or latest.";
 
-export const metadata: Metadata = {
-  title: "Minecraft Skins",
-  description: DESCRIPTION,
-  openGraph: {
-    title: "Minecraft Skins",
-    description: DESCRIPTION,
-    url: `${env.NEXT_PUBLIC_BASE_URL}/skins`,
-  },
-};
-
-export default async function SkinsPage({ params }: PageProps<"/skins/[[...query]]">) {
-  const { query } = await params;
-
+function parseListingQuery(query: string[] | undefined) {
   const rawFirst = query?.[0];
   const rawSort = rawFirst?.toUpperCase();
   const hasSort = isSkinSort(rawSort);
   const sort = hasSort ? rawSort : "TRENDING";
-  const page = Number(hasSort ? (query!.length >= 2 ? query![1] : "1") : (rawFirst ?? "1"));
+  const parsedPage = Number(hasSort ? (query!.length >= 2 ? query![1] : "1") : (rawFirst ?? "1"));
+
+  return {
+    sort,
+    hasSort,
+    page: Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+  };
+}
+
+export async function generateMetadata(props: PageProps<"/skins/[[...query]]">): Promise<Metadata> {
+  const { query } = await props.params;
+  const { sort, hasSort, page } = parseListingQuery(query);
+  const sortSegment = hasSort ? `/${sort.toLowerCase()}` : "";
+  const path = `/skins${sortSegment}${page > 1 ? `/${page}` : ""}`;
+
+  return buildMetadata({ title: "Minecraft Skins", description: DESCRIPTION, path });
+}
+
+export default async function SkinsPage({ params }: PageProps<"/skins/[[...query]]">) {
+  const { query } = await params;
+  const { sort, page } = parseListingQuery(query);
 
   const { data: skins } = await mcUtilsApi.skin().list(page, sort);
   const isEmpty = !skins || skins.items.length === 0;

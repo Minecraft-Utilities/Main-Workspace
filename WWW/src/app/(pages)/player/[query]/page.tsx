@@ -1,6 +1,8 @@
-import { mcUtilsApi } from "@/common/mc-utils";
+import { isNotFoundError, mcUtilsCachedApi } from "@/common/mc-utils";
+import { absoluteUrl, breadcrumbJsonLd, buildMetadata } from "@/common/seo";
 import { isProduction } from "@/common/utils";
 import { ErrorCard } from "@/components/error-card";
+import { JsonLd } from "@/components/json-ld";
 import { PageShell } from "@/components/page-shell";
 import PlayerCapes from "@/components/player/player-capes";
 import PlayerDetails from "@/components/player/player-details";
@@ -11,47 +13,46 @@ import PlayerSkin from "@/components/player/skin/player-skin";
 import PlayerSkins from "@/components/player/skin/player-skins";
 import { SelectedCapeProvider } from "@/components/provider/selected-cape-provider";
 import { SelectedSkinProvider } from "@/components/provider/selected-skin-provider";
-import { imageUrl } from "mcutils-js-api";
 import { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { cache } from "react";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 const getPlayer = cache(async (query: string) => {
-  const { data: player, error } = await mcUtilsApi.player().fetch(query, "FULL");
+  const { data: player, error } = await mcUtilsCachedApi.player().fetch(query, "FULL");
   return { player, error };
 });
 
 export async function generateMetadata(props: PageProps<"/player/[query]">): Promise<Metadata> {
   const { query } = await props.params;
-  const { player } = await getPlayer(query);
+  const { player, error } = await getPlayer(query);
 
-  if (player === undefined) {
-    return {
-      title: "Player not found",
-      description: "This Minecraft player could not be found.",
-      openGraph: {
-        title: "Player not found",
-        description: "This Minecraft player could not be found.",
-      },
-    };
+  if (!player) {
+    // The player endpoint answers 400 when the query is neither a UUID nor a username.
+    if (isNotFoundError(error) || error?.code === 400) {
+      notFound();
+    }
+    return buildMetadata({
+      title: "Player unavailable",
+      description: "This Minecraft player profile is temporarily unavailable. Try again in a moment.",
+      path: `/player/${query}`,
+      noindex: true,
+    });
   }
-  const previewImage = player.skin.parts.FULLBODY_ISO_FRONT;
-  const favicon = imageUrl(player.skin.parts.HEAD_ISO, { size: 64 });
+
+  const title = `${player.username}: Minecraft Profile, Skin & UUID`;
+  const description = `View ${player.username}'s Minecraft skin, cape, UUID, and profile history on MC Utils.`;
+
   return {
-    title: `${player.username}: Minecraft Profile, Skin & UUID`,
-    description: `View ${player.username}'s Minecraft skin, cape, UUID, and profile history on MC Utils.`,
-    openGraph: {
-      title: `${player.username}: Minecraft Profile, Skin & UUID`,
-      description: `View ${player.username}'s Minecraft skin, cape, UUID, and profile history on MC Utils.`,
-      images: [
-        {
-          url: previewImage,
-        },
-      ],
-    },
+    ...buildMetadata({
+      title,
+      description,
+      path: `/player/${player.uniqueId}`,
+      image: player.skin.parts.FULLBODY_ISO_FRONT,
+    }),
     icons: {
-      icon: favicon,
+      icon: mcUtilsCachedApi.player().skinUrl(player.uniqueId, "HEAD_ISO", { size: 64 }),
     },
   };
 }
@@ -61,18 +62,40 @@ export default async function PlayerPage({ params }: PageProps<"/player/[query]"
   const { player, error } = await getPlayer(query);
 
   if (!player) {
+    if (isNotFoundError(error) || error?.code === 400) {
+      notFound();
+    }
     return (
       <PageShell>
         <ErrorCard
-          title="Player not found"
-          message={error?.message ?? "This Minecraft player could not be found."}
+          title="Player unavailable"
+          message={error?.message ?? "This Minecraft player could not be loaded. Try again in a moment."}
         />
       </PageShell>
     );
   }
 
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "ProfilePage",
+      url: absoluteUrl(`/player/${player.uniqueId}`),
+      mainEntity: {
+        "@type": "Person",
+        name: player.username,
+        identifier: player.uniqueId,
+        image: mcUtilsCachedApi.player().skinUrl(player.uniqueId, "HEAD_ISO", { size: 256 }),
+      },
+    },
+    breadcrumbJsonLd([
+      { name: "Home", path: "/" },
+      { name: player.username, path: `/player/${player.uniqueId}` },
+    ]),
+  ];
+
   return (
     <>
+      <JsonLd id="player-jsonld" data={jsonLd} />
       {isProduction() && <PlayerViewsCounter playerQuery={player.uniqueId} />}
       <PageShell>
         <div className="flex w-full min-w-0 flex-col gap-10">

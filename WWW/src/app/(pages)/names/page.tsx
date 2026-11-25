@@ -1,5 +1,5 @@
-import { env } from "@/common/env";
 import { mcUtilsApi } from "@/common/mc-utils";
+import { buildMetadata } from "@/common/seo";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorCard } from "@/components/error-card";
 import NameChanges from "@/components/names/name-changes";
@@ -10,15 +10,11 @@ export const dynamic = "force-dynamic";
 
 const DESCRIPTION = "Recent Minecraft username changes across all players tracked by MC Utils.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "Recent Name Changes",
   description: DESCRIPTION,
-  openGraph: {
-    title: "Recent Name Changes",
-    description: DESCRIPTION,
-    url: `${env.NEXT_PUBLIC_BASE_URL}/names`,
-  },
-};
+  path: "/names",
+});
 
 export default async function NamesPage() {
   const { data: nameChanges, error } = await mcUtilsApi.player().nameChanges();

@@ -1,6 +1,7 @@
-import { env } from "@/common/env";
 import { mcUtilsApi } from "@/common/mc-utils";
+import { absoluteUrl, buildMetadata } from "@/common/seo";
 import { SITE_DESCRIPTION } from "@/common/site";
+import { JsonLd } from "@/components/json-ld";
 import LandingQuerySearch from "@/components/landing/landing-query-search";
 import Statistics from "@/components/landing/statistics";
 import ToolCards from "@/components/landing/tool-cards";
@@ -11,47 +12,59 @@ import { ArrowRightIcon } from "lucide-react";
 import { imageUrl } from "mcutils-js-api";
 import type { Metadata } from "next";
 import Link from "next/link";
-import Script from "next/script";
 
 export const dynamic = "force-dynamic";
 
 const SITE_TITLE = "MC Utils: Minecraft Player & Server Lookup";
 
-export const metadata: Metadata = {
-  title: { absolute: SITE_TITLE },
+const homeMetadata = buildMetadata({
+  title: SITE_TITLE,
   description: SITE_DESCRIPTION,
-  openGraph: {
-    url: env.NEXT_PUBLIC_BASE_URL,
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
-  },
+  path: "/",
+});
+
+export const metadata: Metadata = {
+  ...homeMetadata,
+  title: { absolute: SITE_TITLE },
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: "MC Utils",
-  url: env.NEXT_PUBLIC_BASE_URL,
-  applicationCategory: "UtilitiesApplication",
-  operatingSystem: "All",
-  description: SITE_DESCRIPTION,
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "USD",
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "MC Utils",
+    url: absoluteUrl("/"),
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${absoluteUrl("/player/")}{search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
   },
-};
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "MC Utils",
+    url: absoluteUrl("/"),
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "All",
+    description: SITE_DESCRIPTION,
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+  },
+];
 
 export default async function HomePage() {
   const { data: trendingSkins } = await mcUtilsApi.skin().list(1, "TRENDING");
 
   return (
     <>
-      <Script
-        id="homepage-jsonld"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <JsonLd id="homepage-jsonld" data={jsonLd} />
       <PageShell>
         <PageTitle className="text-center">Minecraft Player & Server Lookup</PageTitle>
 

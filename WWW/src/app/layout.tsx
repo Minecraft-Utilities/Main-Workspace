@@ -18,6 +18,7 @@ const siteFont = localFont({
 
 export const viewport: Viewport = { themeColor: "#9770FF" };
 export const metadata: Metadata = {
+  metadataBase: new URL(env.NEXT_PUBLIC_BASE_URL),
   title: {
     default: "MC Utils: Minecraft Player & Server Lookup",
     template: "%s | MC Utils",
@@ -34,6 +35,8 @@ export const metadata: Metadata = {
     "Bedrock server status",
   ],
   openGraph: {
+    type: "website",
+    locale: "en_US",
     title: "MC Utils: Minecraft Player & Server Lookup",
     siteName: "MC Utils",
     images: [
@@ -47,7 +50,7 @@ export const metadata: Metadata = {
   icons: {
     icon: `${env.NEXT_PUBLIC_BASE_URL}/media/logo/logo.png`,
   },
-  twitter: { card: "summary" },
+  twitter: { card: "summary_large_image" },
 };
 
 export interface RootLayoutProps {

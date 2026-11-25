@@ -1,4 +1,7 @@
+import { env } from "@/common/env";
 import type { MetadataRoute } from "next";
+
+const BASE_URL = env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, "");
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -6,5 +9,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
     },
+    sitemap: `${BASE_URL}/sitemap.xml`,
   };
 }
