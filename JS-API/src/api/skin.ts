@@ -23,6 +23,6 @@ export class SkinApi {
    * @returns the skin, or the error if one occurred
    */
   fetch(id: number | string): Promise<Result<Skin>> {
-    return toResult(this.http.client.GET("/skins/{id}", { params: { path: { id: Number(id) } } }));
+    return toResult(this.http.client.GET("/skins/{id}", { params: { path: { id: String(id) } } }));
   }
 }

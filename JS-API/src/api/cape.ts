@@ -20,7 +20,7 @@ export class CapeApi {
    * @returns the cape, or the error if one occurred
    */
   fetch(id: number | string): Promise<Result<Cape>> {
-    return toResult(this.http.client.GET("/capes/{id}", { params: { path: { id: Number(id) } } }));
+    return toResult(this.http.client.GET("/capes/{id}", { params: { path: { id: String(id) } } }));
   }
 
   /**

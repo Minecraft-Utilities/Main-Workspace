@@ -5,6 +5,8 @@ type Schemas = components["schemas"];
 export type ErrorResponse = Schemas["ErrorResponse"];
 export type BasicPlayer = Schemas["BasicPlayer"];
 export type FullPlayer = Schemas["FullPlayer"];
+export type BedrockPlayer = Schemas["BedrockPlayer"];
+export type BedrockSkin = Schemas["BedrockSkin"];
 export type Skin = Schemas["Skin"];
 export type Cape = Schemas["VanillaCape"];
 export type UsernameHistory = Schemas["UsernameHistory"];
@@ -41,6 +43,8 @@ export type SkinImageOptions = ImageOptions & {
    */
   capeId?: string;
 };
+
+export type BedrockSkinImageOptions = Omit<SkinImageOptions, "capeId">;
 
 /**
  * Either the data or the error, never both. Narrow with `if (result.error)`.

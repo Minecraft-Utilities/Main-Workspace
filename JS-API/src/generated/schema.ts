@@ -340,6 +340,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bedrock/players/{query}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getBedrockPlayer"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bedrock/players/{query}/skin/{type}.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getBedrockPlayerSkin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bedrock/players/{query}/skin/texture.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getBedrockPlayerSkinTexture"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -421,9 +469,6 @@ export interface components {
             cidr: string;
         };
         CachedMinecraftServer: {
-            cached: boolean;
-            /** Format: int64 */
-            cachedTime: number;
             hostname: string;
             ip: string;
             /** Format: int32 */
@@ -434,6 +479,9 @@ export interface components {
             location?: components["schemas"]["GeoLocation"];
             asn?: components["schemas"]["AsnLookup"];
             registryEntry?: components["schemas"]["ServerRegistryEntry"];
+            cached: boolean;
+            /** Format: int64 */
+            cachedTime: number;
         };
         DNSRecord: {
             /** @enum {string} */
@@ -491,22 +539,22 @@ export interface components {
             firstSeen: string;
         };
         VanillaCape: {
-            textureUrl: string;
-            textureId: string;
-            parts: {
-                [key: string]: string;
-            };
             /** Format: int64 */
             id: number;
-            accountsSeenOwning?: string[];
-            /** Format: int64 */
-            currentOwners?: number;
-            firstSeenUsing?: string;
             name?: string;
+            textureId: string;
             /** Format: int64 */
             uniqueOwners: number;
             /** Format: date-time */
             firstSeen: string;
+            textureUrl: string;
+            parts: {
+                [key: string]: string;
+            };
+            accountsSeenOwning?: string[];
+            /** Format: int64 */
+            currentOwners?: number;
+            firstSeenUsing?: string;
         };
         RecentUsernameChange: {
             /** Format: uuid */
@@ -523,6 +571,24 @@ export interface components {
         };
         HealthResponse: {
             status: string;
+        };
+        BedrockPlayer: {
+            /** Format: uuid */
+            uniqueId: string;
+            xuid: string;
+            username: string;
+            skin?: components["schemas"]["BedrockSkin"];
+            /** Format: date-time */
+            skinUpdatedAt?: string;
+        };
+        BedrockSkin: {
+            textureId: string;
+            textureUrl: string;
+            /** @enum {string} */
+            model: "DEFAULT" | "SLIM";
+            parts: {
+                [key: string]: string;
+            };
         };
         IndexResponse: {
             app: string;
@@ -872,8 +938,11 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The UUID of the skin */
-                id: number;
+                /**
+                 * @description The skin ID, texture ID, or the UUID or username of a player
+                 * @example ImFascinated
+                 */
+                id: string;
             };
             cookie?: never;
         };
@@ -1394,8 +1463,11 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The UUID of the cape */
-                id: number;
+                /**
+                 * @description The cape ID, texture ID, or the UUID or username of a player
+                 * @example ImFascinated
+                 */
+                id: string;
             };
             cookie?: never;
         };
@@ -1408,6 +1480,124 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VanillaCape"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBedrockPlayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The gamertag or Floodgate UUID of the player
+                 * @example Fascinated4250
+                 */
+                query: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BedrockPlayer"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBedrockPlayerSkin: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The size of the image (height; width derived per part)
+                 * @example 768
+                 */
+                size?: number;
+                /**
+                 * @description Whether to render the skin overlay (skin layers)
+                 * @example true
+                 */
+                overlays?: boolean;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description The gamertag or Floodgate UUID of the player
+                 * @example Fascinated4250
+                 */
+                query: string;
+                /** @description The part of the skin */
+                type: "FACE" | "BODY" | "BACK" | "HEAD_ISO" | "FULLBODY_ISO_FRONT" | "FULLBODY_ISO_BACK";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBedrockPlayerSkinTexture: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The gamertag or Floodgate UUID of the player
+                 * @example Fascinated4250
+                 */
+                query: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
                 };
             };
             /** @description Error */

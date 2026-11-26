@@ -1,3 +1,4 @@
+import { BedrockApi } from "./api/bedrock";
 import { CapeApi } from "./api/cape";
 import { PlayerApi } from "./api/player";
 import { ServerApi } from "./api/server";
@@ -27,6 +28,7 @@ export class McUtils {
   private readonly skins: SkinApi;
   private readonly capes: CapeApi;
   private readonly servers: ServerApi;
+  private readonly bedrockPlayers: BedrockApi;
   private readonly http;
 
   constructor({ endpoint = "https://mc.fascinated.cc/api", fetchOptions }: McUtilsOptions = {}) {
@@ -35,6 +37,7 @@ export class McUtils {
     this.skins = new SkinApi(this.http);
     this.capes = new CapeApi(this.http);
     this.servers = new ServerApi(this.http);
+    this.bedrockPlayers = new BedrockApi(this.http);
   }
 
   /**
@@ -63,6 +66,13 @@ export class McUtils {
    */
   server(): ServerApi {
     return this.servers;
+  }
+
+  /**
+   * Bedrock player lookups and skin renders.
+   */
+  bedrock(): BedrockApi {
+    return this.bedrockPlayers;
   }
 
   /**
