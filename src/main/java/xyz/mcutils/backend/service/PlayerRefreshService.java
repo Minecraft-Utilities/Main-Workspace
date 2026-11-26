@@ -247,8 +247,10 @@ public class PlayerRefreshService {
                 recordFailure(failureReasons, "null_profile");
                 return null;
             }
+            this.mojangRateLimiter.onSuccess();
             return new PlayerService.PlayerUpdate(playerRow, token);
         } catch (RateLimitException e) {
+            this.mojangRateLimiter.onRateLimited();
             failedIds.add(playerRow.id());
             recordFailure(failureReasons, "rate_limited");
             return null;

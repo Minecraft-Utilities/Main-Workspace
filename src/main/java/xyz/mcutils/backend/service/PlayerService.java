@@ -14,6 +14,7 @@ import xyz.mcutils.backend.common.CoalescingLoader;
 import xyz.mcutils.backend.common.Tuple;
 import xyz.mcutils.backend.common.UUIDUtils;
 import xyz.mcutils.backend.exception.impl.NotFoundException;
+import xyz.mcutils.backend.exception.impl.RateLimitException;
 import xyz.mcutils.backend.metric.impl.player.AccountsUpdatedMetric;
 import xyz.mcutils.backend.metric.impl.player.PlayerChangesDetectedMetric;
 import xyz.mcutils.backend.metric.impl.player.PlayerRefreshMetric;
@@ -151,11 +152,15 @@ public class PlayerService {
                     try {
                         this.mojangRateLimiter.acquire();
                         MojangProfileToken token = this.mojangService.getProfile(playerRow.getId().toString());
+                        this.mojangRateLimiter.onSuccess();
                         if (token == null) {
                             this.bumpRefreshFailure(playerRow.getId());
                             return;
                         }
                         this.self.updatePlayer(playerRow, refreshState, token);
+                    } catch (RateLimitException e) {
+                        this.mojangRateLimiter.onRateLimited();
+                        this.bumpRefreshFailure(playerRow.getId());
                     } catch (Exception e) {
                         this.bumpRefreshFailure(playerRow.getId());
                     } finally {

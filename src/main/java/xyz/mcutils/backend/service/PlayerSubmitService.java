@@ -172,6 +172,7 @@ public class PlayerSubmitService {
                 recordOutcome(PlayerSubmitProcessingMetric.Outcome.NOT_FOUND, processStart);
                 return new FetchResult(entry, null, PlayerSubmitProcessingMetric.Outcome.NOT_FOUND, processStart);
             }
+            mojangRateLimiter.onSuccess();
             recordOutcome(PlayerSubmitProcessingMetric.Outcome.CREATED, processStart);
             return new FetchResult(entry, token, PlayerSubmitProcessingMetric.Outcome.CREATED, processStart);
         } catch (NotFoundException e) {
@@ -179,6 +180,7 @@ public class PlayerSubmitService {
             recordOutcome(PlayerSubmitProcessingMetric.Outcome.NOT_FOUND, processStart);
             return new FetchResult(entry, null, PlayerSubmitProcessingMetric.Outcome.NOT_FOUND, processStart);
         } catch (RateLimitException e) {
+            mojangRateLimiter.onRateLimited();
             // The HTTP layer throws the plain RateLimitException (not the never-thrown
             // MojangAPIRateLimitException subclass); without this catch the popped entry
             // was silently dropped: never requeued, and its dedupe key stayed in the set,

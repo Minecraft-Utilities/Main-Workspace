@@ -1,23 +1,21 @@
 package xyz.mcutils.backend.service;
 
-import com.google.common.util.concurrent.RateLimiter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import xyz.mcutils.backend.common.AdaptiveRateLimiter;
 
 /**
- * Single shared rate limiter for all outbound Mojang API traffic (background player
- * refresh, submit queue, and on-demand refreshes). Previously each path had its own
- * limiter, so the combined egress rate against Mojang exceeded the configured budget
- * and the on-demand path had no limiter at all.
+ * Single shared rate limiter for all outbound Mojang profile traffic (background player
+ * refresh, submit queue, and on-demand refreshes). The configured rate is a ceiling: callers
+ * report rate limits and successes so the shared rate backs off and recovers together.
  */
-@SuppressWarnings("UnstableApiUsage")
 @Service
 public class MojangRateLimiter {
 
-    private final RateLimiter rateLimiter;
+    private final AdaptiveRateLimiter rateLimiter;
 
     public MojangRateLimiter(@Value("${mc-utils.player-refresh.mojang-rate-limit:600}") double rateLimit) {
-        this.rateLimiter = RateLimiter.create(rateLimit);
+        this.rateLimiter = new AdaptiveRateLimiter(rateLimit);
     }
 
     /**
@@ -25,5 +23,13 @@ public class MojangRateLimiter {
      */
     public void acquire() {
         this.rateLimiter.acquire();
+    }
+
+    public void onRateLimited() {
+        this.rateLimiter.slowDown();
+    }
+
+    public void onSuccess() {
+        this.rateLimiter.speedUp();
     }
 }

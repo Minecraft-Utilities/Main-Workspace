@@ -1,6 +1,5 @@
 package xyz.mcutils.backend.service;
 
-import com.google.common.util.concurrent.RateLimiter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cache.CacheManager;
@@ -11,6 +10,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.ResourceAccessException;
 import xyz.mcutils.backend.Main;
+import xyz.mcutils.backend.common.AdaptiveRateLimiter;
 import xyz.mcutils.backend.common.FutureUtils;
 import xyz.mcutils.backend.common.ImageUtils;
 import xyz.mcutils.backend.common.WebRequest;
@@ -41,7 +41,7 @@ public class LegacySkinCheckService {
     private static final Duration EMPTY_QUEUE_BLOCK = Duration.ofSeconds(2);
     private static final String SKIN_TEXTURE_CACHE = "skinByTextureId";
 
-    private final RateLimiter rateLimiter = RateLimiter.create(RATE_LIMIT);
+    private final AdaptiveRateLimiter rateLimiter = new AdaptiveRateLimiter(RATE_LIMIT);
     private final RedisQueue checkQueue;
     private final SkinRepository skinRepository;
     private final WebRequest webRequest;
@@ -181,6 +181,7 @@ public class LegacySkinCheckService {
         try {
             String textureUrl = texturesEndpoint + "/texture/" + textureId;
             byte[] bytes = webRequest.request(textureUrl).asBytes();
+            rateLimiter.speedUp();
             if (bytes == null) {
                 log.debug("No response fetching skin texture {}", textureId);
             }
@@ -192,6 +193,7 @@ public class LegacySkinCheckService {
             }
             return CheckResult.success(textureId, legacy);
         } catch (RateLimitException e) {
+            rateLimiter.slowDown();
             log.debug("Rate limited checking legacy status for {}, will retry", textureId);
             return CheckResult.retry(textureId);
         } catch (ResourceAccessException e) {
