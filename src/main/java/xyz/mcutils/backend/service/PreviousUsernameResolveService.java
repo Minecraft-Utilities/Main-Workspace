@@ -1,6 +1,5 @@
 package xyz.mcutils.backend.service;
 
-import com.google.common.util.concurrent.RateLimiter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -8,6 +7,7 @@ import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import xyz.mcutils.backend.Main;
+import xyz.mcutils.backend.common.AdaptiveRateLimiter;
 import xyz.mcutils.backend.common.FutureUtils;
 import xyz.mcutils.backend.common.UUIDUtils;
 import xyz.mcutils.backend.exception.impl.RateLimitException;
@@ -34,14 +34,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 @Service
 @Slf4j
-@SuppressWarnings("UnstableApiUsage")
 public class PreviousUsernameResolveService {
 
     private static final int BATCH_SIZE = 2000;
     private static final int CHUNK_SIZE = 10;
-    private static final double MIN_REQUESTS_PER_SECOND = 1;
-    private static final double RATE_INCREMENT = 0.05;
-    private static final long SLOW_DOWN_COOLDOWN_NANOS = Duration.ofSeconds(2).toNanos();
     private static final Duration EMPTY_WAIT = Duration.ofMinutes(1);
     private static final Duration FAILURE_BACKOFF = Duration.ofHours(1);
     private static final Duration WAIT_POLL = Duration.ofSeconds(1);
@@ -50,10 +46,7 @@ public class PreviousUsernameResolveService {
     private final MojangService mojangService;
     private final PlayerService playerService;
     private final PlayerSubmitService playerSubmitService;
-    private final RateLimiter requestRateLimiter;
-    private final double maxRequestsPerSecond;
-    private final Object rateLock = new Object();
-    private long lastSlowDownNanos = System.nanoTime() - SLOW_DOWN_COOLDOWN_NANOS;
+    private final AdaptiveRateLimiter requestRateLimiter;
     private final boolean enabled;
     private final AtomicBoolean running = new AtomicBoolean(true);
 
@@ -70,8 +63,7 @@ public class PreviousUsernameResolveService {
         this.playerService = playerService;
         this.playerSubmitService = playerSubmitService;
         this.enabled = enabled;
-        this.maxRequestsPerSecond = maxRequestsPerSecond;
-        this.requestRateLimiter = RateLimiter.create(Math.max(MIN_REQUESTS_PER_SECOND, maxRequestsPerSecond / 4));
+        this.requestRateLimiter = new AdaptiveRateLimiter(maxRequestsPerSecond);
     }
 
     @EventListener(ContextClosedEvent.class)
@@ -143,12 +135,12 @@ public class PreviousUsernameResolveService {
             futures.add(Main.EXECUTOR.submit(() -> {
                 try {
                     Totals chunkTotals = resolveChunk(chunk, now);
-                    speedUp();
+                    this.requestRateLimiter.speedUp();
                     return chunkTotals;
                 } catch (RateLimitException e) {
                     log.debug("Previous username chunk rate limited for {} names, postponing", chunk.size());
                     postpone(chunk, now);
-                    slowDown();
+                    this.requestRateLimiter.slowDown();
                     return new Totals(0, 0, 0, 0, chunk.size(), chunk.size());
                 } catch (Exception e) {
                     log.warn("Previous username chunk failed for {} names, postponing: {}", chunk.size(), e.toString());
@@ -189,31 +181,6 @@ public class PreviousUsernameResolveService {
 
     private void postpone(List<String> chunk, Instant now) {
         this.previousUsernameCheckRepository.postpone(chunk, now.plus(FAILURE_BACKOFF));
-    }
-
-    /**
-     * Backs the shared rate off when Mojang pushes back. One burst of 429s hits many in-flight
-     * chunks at once, so only the first within the cooldown halves the rate; otherwise a single
-     * burst would collapse it to the floor.
-     */
-    private void slowDown() {
-        synchronized (this.rateLock) {
-            long nowNanos = System.nanoTime();
-            if (nowNanos - this.lastSlowDownNanos < SLOW_DOWN_COOLDOWN_NANOS) {
-                return;
-            }
-            this.lastSlowDownNanos = nowNanos;
-            this.requestRateLimiter.setRate(Math.max(MIN_REQUESTS_PER_SECOND, this.requestRateLimiter.getRate() / 2));
-        }
-    }
-
-    /**
-     * Creeps the shared rate back up after a chunk succeeds, holding it at the configured ceiling.
-     */
-    private void speedUp() {
-        synchronized (this.rateLock) {
-            this.requestRateLimiter.setRate(Math.min(this.maxRequestsPerSecond, this.requestRateLimiter.getRate() + RATE_INCREMENT));
-        }
     }
 
     private void record(PreviousUsernameChecksMetric.Outcome outcome, long count) {

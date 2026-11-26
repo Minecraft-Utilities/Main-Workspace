@@ -68,6 +68,7 @@ public class MetricService {
         this.registerMetric(new PlayerSubmitOutcomesMetric());
         this.registerMetric(new PlayerSubmitProcessingMetric());
         this.registerMetric(new PreviousUsernameChecksMetric());
+        this.registerMetric(new NameSweepChecksMetric());
         this.registerMetric(new PlayersCreatedMetric());
         this.previousUsernameChecksDueMetric = new PreviousUsernameChecksDueMetric(previousUsernameResolveService);
         this.registerMetric(this.previousUsernameChecksDueMetric);
