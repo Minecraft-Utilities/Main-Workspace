@@ -2,13 +2,13 @@ package xyz.mcutils.backend.config;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import io.swagger.v3.core.converter.AnnotatedType;
 import io.swagger.v3.core.converter.ModelConverter;
 import io.swagger.v3.core.converter.ModelConverterContext;
 import io.swagger.v3.oas.models.media.Schema;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.type.TypeFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -47,8 +47,9 @@ public class RequiredPropertiesModelConverter implements ModelConverter {
             return schema;
         }
 
-        JavaType javaType = type.getType() instanceof JavaType jt ? jt : TypeFactory.defaultInstance().constructType(type.getType());
-        Class<?> raw = javaType.getRawClass();
+        Class<?> raw = type.getType() instanceof JavaType javaType
+                ? javaType.getRawClass()
+                : TypeFactory.createDefaultInstance().constructType(type.getType()).getRawClass();
         if (!raw.getName().startsWith(MODEL_PACKAGE)) {
             return schema;
         }

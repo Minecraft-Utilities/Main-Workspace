@@ -21,7 +21,10 @@ public class CacheConfig {
         manager.setCaches(List.of(
             buildCache("geoLookup", 30, TimeUnit.MINUTES, 10_000),
             buildCache("skinByTextureId", 2, TimeUnit.DAYS, 1_000_000),
-            buildCache("capeByTextureId", 12, TimeUnit.HOURS, 5_000)
+            buildCache("capeByTextureId", 12, TimeUnit.HOURS, 5_000),
+            buildCache("geyserXuid", 6, TimeUnit.HOURS, 100_000),
+            buildCache("geyserGamertag", 6, TimeUnit.HOURS, 100_000),
+            buildCache("geyserSkin", 1, TimeUnit.HOURS, 100_000)
         ));
         return manager;
     }
