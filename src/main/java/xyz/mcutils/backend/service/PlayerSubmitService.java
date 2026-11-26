@@ -1,6 +1,5 @@
 package xyz.mcutils.backend.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import xyz.mcutils.backend.common.UUIDUtils;
@@ -19,7 +18,6 @@ import java.util.UUID;
  * Queue entries are stored as strings: {@code playerUuid,submitterUuid} (or {@code playerUuid} when no submitter).
  */
 @Service
-@Slf4j
 public class PlayerSubmitService {
 
     public static final String QUEUE_NAME = "player-submit-queue";
@@ -64,8 +62,6 @@ public class PlayerSubmitService {
             return 0;
         }
 
-        log.info("Submitted {} players to submit queue (total queued: {}, submittedBy: {})",
-                result.enqueued(), submitQueue.size(), submittedBy);
         MetricService.getMetric(PlayerSubmitOutcomesMetric.class).inc(PlayerSubmitOutcomesMetric.Outcome.ENQUEUED, result.enqueued());
         return result.enqueued();
     }
