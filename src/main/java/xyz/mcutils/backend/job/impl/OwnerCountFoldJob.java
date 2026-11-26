@@ -5,24 +5,24 @@ import xyz.mcutils.backend.job.Job;
 import xyz.mcutils.backend.job.JobContext;
 import xyz.mcutils.backend.job.JobResult;
 import xyz.mcutils.backend.job.JobTrigger;
-import xyz.mcutils.backend.repository.postgres.SkinCurrentOwnersRepository;
+import xyz.mcutils.backend.repository.postgres.OwnerCountRepository;
 
 import java.time.Duration;
 
 /**
- * Folds the pending skin owner deltas written by the player triggers into the owner counts.
+ * Folds the pending owner count deltas written by the database triggers into the skin and cape counts.
  */
 @Component
-public class SkinOwnerFoldJob implements Job {
-    private final SkinCurrentOwnersRepository repository;
+public class OwnerCountFoldJob implements Job {
+    private final OwnerCountRepository repository;
 
-    public SkinOwnerFoldJob(SkinCurrentOwnersRepository repository) {
+    public OwnerCountFoldJob(OwnerCountRepository repository) {
         this.repository = repository;
     }
 
     @Override
     public String name() {
-        return "skin-owner-fold";
+        return "owner-count-fold";
     }
 
     @Override
@@ -32,6 +32,6 @@ public class SkinOwnerFoldJob implements Job {
 
     @Override
     public JobResult run(JobContext context) {
-        return this.repository.foldDeltas() > 0 ? JobResult.WORKED : JobResult.IDLE;
+        return this.repository.fold() > 0 ? JobResult.WORKED : JobResult.IDLE;
     }
 }
