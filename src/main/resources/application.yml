@@ -179,8 +179,8 @@ mc-utils:
   # Enumerates every username of the given lengths to discover players that are not tracked yet.
   # Each length does one pass at the initial rate, then keeps sweeping at the continuous rate.
   name-sweep:
-    lengths: 4,5
-    initial-requests-per-second: 50
+    lengths: 4,5,6
+    initial-requests-per-second: 75
     continuous-requests-per-second: 10
 
   # Background jobs. Every job runs unless switched off here by name.
