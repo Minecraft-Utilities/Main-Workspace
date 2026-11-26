@@ -15,5 +15,4 @@ public interface CapeRepository extends JpaRepository<CapeRow, Long> {
 
     @Query("SELECT c FROM CapeRow c ORDER BY c.uniqueOwners DESC, c.id ASC")
     List<CapeRow> findAllOrderByUniqueOwnersDescIdAsc();
-
 }

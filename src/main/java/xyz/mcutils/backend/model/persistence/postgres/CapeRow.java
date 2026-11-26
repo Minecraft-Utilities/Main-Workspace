@@ -27,6 +27,9 @@ public class CapeRow {
     @Column(nullable = false, name = "unique_owners")
     private long uniqueOwners;
 
+    @Column(nullable = false, name = "current_owners", insertable = false, updatable = false)
+    private long currentOwners;
+
     @Column(nullable = false, name = "first_seen")
     private Instant firstSeen;
 

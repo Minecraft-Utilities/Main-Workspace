@@ -98,7 +98,7 @@ public class CapeService {
 
         List<String> usersOwning = this.playerRepository.findUsernamesByCapeId(capeRow.getId(), PageRequest.of(0, 250));
         cape.setAccountsSeenOwning(usersOwning);
-        cape.setCurrentOwners(this.playerRepository.countByCapeId(capeRow.getId()));
+        cape.setCurrentOwners(capeRow.getCurrentOwners());
 
         return cape;
     }
