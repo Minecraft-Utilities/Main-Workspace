@@ -10,11 +10,12 @@ import Skeleton from "@/components/skeleton/ui/skeleton";
 import Card, { CardContent, CardHeader } from "@/components/ui/card";
 import DownloadFileButton from "@/components/ui/download-file-button";
 import { DownloadIcon } from "lucide-react";
-import type { FullPlayer, SkinPart } from "mcutils-js-api";
+import type { SkinPart } from "mcutils-js-api";
 import Image from "next/image";
 import { useRef, useState } from "react";
 import PlayerSkin3D from "./player-skin-3d";
 import Skin3DButtons from "./skin-3d-buttons";
+import type { SkinViewerSubject } from "./skin-viewer-subject";
 
 type SkinMode = "3D" | "2D";
 
@@ -28,7 +29,7 @@ const SKIN_PART_LABELS: Record<SkinPart, string> = {
 };
 
 export interface PlayerSkinProps {
-  player: FullPlayer;
+  player: SkinViewerSubject;
 }
 
 export default function PlayerSkin({ player }: PlayerSkinProps) {

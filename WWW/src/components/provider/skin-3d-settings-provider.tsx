@@ -1,6 +1,6 @@
 "use client";
 
-import type { FullPlayer } from "mcutils-js-api";
+import type { SkinViewerSubject } from "@/components/player/skin/skin-viewer-subject";
 import {
   createContext,
   useContext,
@@ -54,7 +54,13 @@ type Skin3DSettingsContextType = {
 
 const Skin3DSettingsContext = createContext<Skin3DSettingsContextType | undefined>(undefined);
 
-export function Skin3DSettingsProvider({ player, children }: { player: FullPlayer; children: ReactNode }) {
+export function Skin3DSettingsProvider({
+  player,
+  children,
+}: {
+  player: SkinViewerSubject;
+  children: ReactNode;
+}) {
   const skinViewerRef: RefObject<Render | null> = useRef<Render | null>(null);
   const [selectedAnimation, setSelectedAnimation] = useState<Skin3DAnimation>(skin3DAnimations.idle);
   const [showElytra, setShowElytra] = useState<boolean>(false);

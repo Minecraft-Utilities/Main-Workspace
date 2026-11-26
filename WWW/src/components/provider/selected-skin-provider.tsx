@@ -3,11 +3,13 @@
 import type { Skin } from "mcutils-js-api";
 import { createContext, ReactNode, useContext, useState } from "react";
 
+type SelectedSkin = Pick<Skin, "textureId" | "textureUrl" | "parts">;
+
 type SelectedSkinContextProps = {
-  selectedSkin: Skin;
-  setSelectedSkin: (skin: Skin) => void;
-  hoveredSkin: Skin | null;
-  setHoveredSkin: (skin: Skin | null) => void;
+  selectedSkin: SelectedSkin;
+  setSelectedSkin: (skin: SelectedSkin) => void;
+  hoveredSkin: SelectedSkin | null;
+  setHoveredSkin: (skin: SelectedSkin | null) => void;
 };
 const SelectedSkinContext = createContext<SelectedSkinContextProps | undefined>(undefined);
 
@@ -16,10 +18,10 @@ export const SelectedSkinProvider = ({
   initialSkin,
 }: {
   children: ReactNode;
-  initialSkin: Skin;
+  initialSkin: SelectedSkin;
 }) => {
-  const [selectedSkin, setSelectedSkin] = useState<Skin>(initialSkin);
-  const [hoveredSkin, setHoveredSkin] = useState<Skin | null>(null);
+  const [selectedSkin, setSelectedSkin] = useState<SelectedSkin>(initialSkin);
+  const [hoveredSkin, setHoveredSkin] = useState<SelectedSkin | null>(null);
 
   return (
     <SelectedSkinContext.Provider value={{ selectedSkin, setSelectedSkin, hoveredSkin, setHoveredSkin }}>

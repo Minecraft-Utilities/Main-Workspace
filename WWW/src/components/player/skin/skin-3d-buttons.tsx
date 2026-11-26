@@ -4,12 +4,12 @@ import { skin3DAnimations, useSkin3DSettings } from "@/components/provider/skin-
 import SimpleTooltip from "@/components/simple-tooltip";
 import { Button } from "@/components/ui/button";
 import { LayersIcon } from "lucide-react";
-import type { FullPlayer } from "mcutils-js-api";
 import Image from "next/image";
 import type { ReactNode } from "react";
+import type { SkinViewerSubject } from "./skin-viewer-subject";
 
 export interface Skin3DButtonsProps {
-  player: FullPlayer;
+  player: SkinViewerSubject;
 }
 
 export default function Skin3DButtons({ player }: Skin3DButtonsProps) {
@@ -37,14 +37,14 @@ export default function Skin3DButtons({ player }: Skin3DButtonsProps) {
         isSelected={animation.name === skin3DAnimations.flying.name}
         onClick={() => playAnimation(skin3DAnimations.flying)}
       />
-      {player.cape && (
+      {player.cape ? (
         <SkinActionButton
           tooltip="Toggle Elytra"
           icon="/media/3d-skin-buttons/elytra.webp"
           isSelected={showElytra || animation.name === skin3DAnimations.flying.name}
           onClick={toggleShowElytra}
         />
-      )}
+      ) : null}
       <SkinActionButton
         tooltip="Toggle Layers"
         icon={<LayersIcon className="size-3.5" />}

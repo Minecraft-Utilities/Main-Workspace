@@ -1,5 +1,6 @@
 "use client";
 
+import { bedrockPath, GAMERTAG_PATTERN, isBedrockQuery } from "@/common/bedrock";
 import { errorMessage } from "@/common/error-message";
 import { mcUtilsApi } from "@/common/mc-utils";
 import { cn, isIpOrDomain } from "@/common/utils";
@@ -25,8 +26,9 @@ import { Button } from "../ui/button";
 import { lookupRowClassName } from "./lookup-row";
 import ServerEditionDialog from "./server-edition-dialog";
 
-export const QUERY_SEARCH_PLACEHOLDER = "Search a player, UUID, or server";
-export const QUERY_SEARCH_VALIDATION_MESSAGE = "That's not a valid username, UUID or server address";
+export const QUERY_SEARCH_PLACEHOLDER = "Search a player, gamertag, or server";
+export const QUERY_SEARCH_VALIDATION_MESSAGE =
+  "That's not a valid username, gamertag, UUID or server address";
 
 const HISTORY_MAX = 10;
 
@@ -34,7 +36,12 @@ const PLAYER_NAME_PATTERN = /^[A-Za-z0-9_]{1,16}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
 
 function isLookupQuery(value: string): boolean {
-  return PLAYER_NAME_PATTERN.test(value) || UUID_PATTERN.test(value) || isIpOrDomain(value);
+  return (
+    PLAYER_NAME_PATTERN.test(value) ||
+    UUID_PATTERN.test(value) ||
+    GAMERTAG_PATTERN.test(value) ||
+    isIpOrDomain(value)
+  );
 }
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
@@ -265,7 +272,30 @@ export default function QuerySearch({
       setLookupError(undefined);
       setQueryError?.(undefined);
       setIsLookupLoading(true);
+
+      const submitBedrock = async (query: string) => {
+        const bedrock = await mcUtilsApi.bedrock().player(query);
+        if (bedrock.error) {
+          return bedrock.error;
+        }
+        const path = bedrockPath(bedrock.data.username);
+        addEntry({ query: bedrock.data.username, path });
+        router.push(path);
+        form.reset();
+        setServerPopoverOpen(false);
+        return undefined;
+      };
+
       try {
+        if (isBedrockQuery(trimmed)) {
+          const bedrockError = await submitBedrock(trimmed);
+          if (bedrockError) {
+            setLookupError(bedrockError);
+            setQueryError?.(bedrockError);
+          }
+          return;
+        }
+
         const result = await mcUtilsApi.player().fetch(trimmed);
         if (result.error) {
           setLookupError(result.error);
