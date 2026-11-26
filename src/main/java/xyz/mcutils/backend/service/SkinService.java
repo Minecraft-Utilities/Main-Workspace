@@ -142,8 +142,14 @@ public class SkinService {
     }
 
     public SkinRow getSkinByQuery(String query) {
-        // By numeric ID
         if (!query.isEmpty() && query.chars().allMatch(Character::isDigit)) {
+            // All-digit names are valid usernames, so a player match wins over a skin ID.
+            if (query.length() <= 16) {
+                Optional<SkinRow> playerSkin = this.playerRepository.findSkinByUsernameIgnoreCase(query);
+                if (playerSkin.isPresent()) {
+                    return playerSkin.get();
+                }
+            }
             Optional<SkinRow> optionalSkinRow = this.skinRepository.findById(Long.parseLong(query));
             if (optionalSkinRow.isEmpty()) {
                 throw new NotFoundException("Skin not found");
@@ -178,7 +184,7 @@ public class SkinService {
      * for Content-Disposition filenames on rendered skin parts.
      */
     public Optional<String> findPlayerUsernameForSkinQuery(String query) {
-        if (query.isEmpty() || query.chars().allMatch(Character::isDigit) || query.length() > 36) {
+        if (query.isEmpty() || query.length() > 36) {
             return Optional.empty();
         }
         boolean isUsername = query.length() <= 16;
