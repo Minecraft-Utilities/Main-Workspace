@@ -121,12 +121,8 @@ public class SkinService {
         log.info("Updated trending heat for skins in {}ms ({} trending)", System.currentTimeMillis() - before, this.statisticsService.getTrendingSkinCount());
     }
 
-    public Skin getSkinById(long id) {
-        Optional<SkinRow> optionalSkinRow = this.skinRepository.findById(id);
-        if (optionalSkinRow.isEmpty()) {
-            throw new NotFoundException("Skin not found");
-        }
-        SkinRow skinRow = optionalSkinRow.get();
+    public Skin getSkin(String query) {
+        SkinRow skinRow = this.getSkinByQuery(query);
         Skin skin = Skin.fromRow(skinRow);
 
         if (skinRow.getFirstSeenUsingPlayerId() != null) {

@@ -83,12 +83,8 @@ public class CapeService {
         INSTANCE = this;
     }
 
-    public VanillaCape getCapeById(long id) {
-        Optional<CapeRow> optionalCapeRow = this.capeRepository.findById(id);
-        if (optionalCapeRow.isEmpty()) {
-            throw new NotFoundException("Cape not found");
-        }
-        CapeRow capeRow = optionalCapeRow.get();
+    public VanillaCape getCape(String query) {
+        CapeRow capeRow = this.getCapeByQuery(query);
         VanillaCape cape = VanillaCape.fromRow(capeRow);
 
         if (capeRow.getFirstSeenUsingPlayerId() != null) {
@@ -104,8 +100,14 @@ public class CapeService {
     }
 
     public CapeRow getCapeByQuery(String query) {
-        // By numeric ID
         if (!query.isEmpty() && query.chars().allMatch(Character::isDigit)) {
+            // All-digit names are valid usernames, so a player match wins over a cape ID.
+            if (query.length() <= 16) {
+                Optional<CapeRow> playerCape = this.playerRepository.findCapeByUsernameIgnoreCase(query);
+                if (playerCape.isPresent()) {
+                    return playerCape.get();
+                }
+            }
             Optional<CapeRow> optionalCapeRow = this.capeRepository.findById(Long.parseLong(query));
             if (optionalCapeRow.isEmpty()) {
                 throw new NotFoundException("Cape not found");

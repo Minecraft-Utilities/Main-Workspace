@@ -32,8 +32,8 @@ public class CapeController {
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<VanillaCape> getCape(@Parameter(description = "The UUID of the cape") @PathVariable long id) {
-        return ResponseEntity.ok().body(this.capeService.getCapeById(id));
+    public ResponseEntity<VanillaCape> getCape(@Parameter(description = "The cape ID, texture ID, or the UUID or username of a player", example = "ImFascinated") @PathVariable String id) {
+        return ResponseEntity.ok().body(this.capeService.getCape(id));
     }
 
     @GetMapping(value = "/{query}/texture.png", produces = MediaType.IMAGE_PNG_VALUE)

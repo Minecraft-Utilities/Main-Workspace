@@ -46,8 +46,8 @@ public class SkinController {
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Skin> getSkin(@Parameter(description = "The UUID of the skin") @PathVariable Long id) {
-        return ResponseEntity.ok().body(skinService.getSkinById(id));
+    public ResponseEntity<Skin> getSkin(@Parameter(description = "The skin ID, texture ID, or the UUID or username of a player", example = "ImFascinated") @PathVariable String id) {
+        return ResponseEntity.ok().body(skinService.getSkin(id));
     }
 
     @GetMapping(value = "/{query}/texture.png", produces = MediaType.IMAGE_PNG_VALUE)
