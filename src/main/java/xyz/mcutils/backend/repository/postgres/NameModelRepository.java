@@ -12,6 +12,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 
 /**
  * Access to the trained username models and the sweep cursors that point into them.
@@ -23,9 +24,10 @@ public class NameModelRepository {
     public record StoredModel(NameModel model, long trainedOn) {}
 
     private static final int TRAINING_PARTITIONS = 16;
-    private static final int TRAINING_PARALLELISM = 4;
+    private static final int TRAINING_PARALLELISM = 2;
 
     private final JdbcClient jdbc;
+    private final Semaphore trainingPermits = new Semaphore(TRAINING_PARALLELISM);
 
     public NameModelRepository(JdbcClient jdbc) {
         this.jdbc = jdbc;
@@ -36,18 +38,21 @@ public class NameModelRepository {
      * tracked names of {@code length}, so only the aggregate crosses the wire.
      *
      * <p>The table is split into {@link #TRAINING_PARTITIONS} uuid ranges that are aggregated
-     * concurrently, at most {@link #TRAINING_PARALLELISM} at a time, so training uses several cores
-     * without taking the connection pool from the API.
+     * concurrently. At most {@link #TRAINING_PARALLELISM} run at once across all lengths, because
+     * each holds a pooled connection for minutes and training must not starve the API.
      *
      * @return the number of names the model was trained on
      */
     public long train(int length, NameModel.Trainer trainer) {
         long[] names = {0};
-        try (ExecutorService pool = Executors.newFixedThreadPool(TRAINING_PARALLELISM)) {
+        try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<?>> partitions = new ArrayList<>();
             for (int partition = 0; partition < TRAINING_PARTITIONS; partition++) {
                 int index = partition;
-                partitions.add(pool.submit(() -> trainPartition(length, index, trainer, names)));
+                partitions.add(pool.submit(() -> {
+                    trainPartition(length, index, trainer, names);
+                    return null;
+                }));
             }
             for (Future<?> partition : partitions) {
                 partition.get();
@@ -61,7 +66,16 @@ public class NameModelRepository {
         return names[0];
     }
 
-    private void trainPartition(int length, int partition, NameModel.Trainer trainer, long[] names) {
+    private void trainPartition(int length, int partition, NameModel.Trainer trainer, long[] names) throws InterruptedException {
+        this.trainingPermits.acquire();
+        try {
+            aggregatePartition(length, partition, trainer, names);
+        } finally {
+            this.trainingPermits.release();
+        }
+    }
+
+    private void aggregatePartition(int length, int partition, NameModel.Trainer trainer, long[] names) {
         String low = Integer.toHexString(partition) + "0000000-0000-0000-0000-000000000000";
         String high = partition + 1 < TRAINING_PARTITIONS
                 ? Integer.toHexString(partition + 1) + "0000000-0000-0000-0000-000000000000"

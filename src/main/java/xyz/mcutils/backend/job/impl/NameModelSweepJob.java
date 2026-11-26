@@ -45,7 +45,7 @@ public class NameModelSweepJob implements JobProvider {
             NameResolveService nameResolveService,
             @Value("${mc-utils.name-sweep.model.lengths:}") List<Integer> lengths,
             @Value("${mc-utils.name-sweep.model.candidates-per-length:1000000000}") long candidatesPerLength,
-            @Value("${mc-utils.name-sweep.model.requests-per-second:100}") double requestsPerSecond
+            @Value("${mc-utils.name-sweep.model.requests-per-second:150}") double requestsPerSecond
     ) {
         this.nameModelRepository = nameModelRepository;
         this.nameResolveService = nameResolveService;
