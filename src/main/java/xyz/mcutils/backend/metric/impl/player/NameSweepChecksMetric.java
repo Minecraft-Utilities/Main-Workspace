@@ -5,8 +5,15 @@ import xyz.mcutils.backend.metric.Metric;
 import xyz.mcutils.backend.service.MetricService;
 
 /**
- * Tracks the outcome of enumerated usernames checked through Mojang's bulk name lookup, by name
- * length. Names already held by a tracked player are skipped before the lookup and not counted.
+ * Tracks the outcome of usernames checked through Mojang's bulk name lookup, by source, name
+ * length and outcome. Names already held by a tracked player are skipped before the lookup and
+ * not counted.
+ *
+ * <p>Sources:
+ * <ul>
+ *   <li>{@code enumeration} – every name of a length, walked by index</li>
+ *   <li>{@code model} – names ranked by a character model of real usernames</li>
+ * </ul>
  *
  * <p>Outcomes:
  * <ul>
@@ -18,6 +25,21 @@ import xyz.mcutils.backend.service.MetricService;
  * </ul>
  */
 public class NameSweepChecksMetric extends Metric<NameSweepChecksMetric.Holder> {
+    public enum Source {
+        ENUMERATION("enumeration"),
+        MODEL("model");
+
+        private final String label;
+
+        Source(String label) {
+            this.label = label;
+        }
+
+        public String label() {
+            return label;
+        }
+    }
+
     public enum Outcome {
         NEW_PLAYER("new_player"),
         ALREADY_TRACKED("already_tracked"),
@@ -39,14 +61,14 @@ public class NameSweepChecksMetric extends Metric<NameSweepChecksMetric.Holder> 
     public NameSweepChecksMetric() {
         super(new Holder(Counter.builder()
                 .name("name_sweep_checks_total")
-                .help("Total enumerated usernames checked against Mojang, by name length and outcome")
-                .labelNames("length", "outcome")
+                .help("Total usernames checked against Mojang, by source, name length and outcome")
+                .labelNames("source", "length", "outcome")
                 .register(MetricService.REGISTRY)));
     }
 
-    public void inc(int length, Outcome outcome, long n) {
+    public void inc(Source source, int length, Outcome outcome, long n) {
         if (n > 0) {
-            getValue().counter.labelValues(String.valueOf(length), outcome.label()).inc(n);
+            getValue().counter.labelValues(source.label(), String.valueOf(length), outcome.label()).inc(n);
         }
     }
 

@@ -6,7 +6,10 @@
  * see none (no flapping).
  *
  * Run: bun benchmark/stub/mojang-stub.ts [--port 9200] [--skins 19800000] [--latency-ms 0]
- *      [--rename-rate 0.002] [--skin-rate 0.02] [--cape-rate 0.003] [--error-rate 0]
+ *      [--rename-rate 0.002] [--skin-rate 0.02] [--cape-rate 0.003] [--error-rate 0] [--name-claim-rate 0.01]
+ *
+ * POST /profiles/minecraft (bulk name lookup) claims a deterministic slice of names, so name sweeps see
+ * both unclaimed names and new accounts.
  */
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
@@ -24,6 +27,7 @@ const renameRate = opt("rename-rate", 0.002);
 const skinRate = opt("skin-rate", 0.02);
 const capeRate = opt("cape-rate", 0.003);
 const errorRate = opt("error-rate", 0);
+const nameClaimRate = opt("name-claim-rate", 0.01);
 const CAPES = 44;
 
 const md5 = (input: string) => createHash("md5").update(input).digest("hex");
@@ -68,6 +72,7 @@ const skinPng = (() => {
 })();
 
 let profileRequests = 0;
+let bulkNameRequests = 0;
 let errors = 0;
 
 function profile(raw: string): Response {
@@ -120,6 +125,15 @@ Bun.serve({
       const raw = path.slice(path.lastIndexOf("/") + 1).replaceAll("-", "").toLowerCase();
       return raw.length === 32 ? profile(raw) : Response.json({}, { status: 404 });
     }
+    if (path === "/profiles/minecraft" && req.method === "POST") {
+      bulkNameRequests++;
+      const names: string[] = await req.json();
+      const claimed = names.flatMap((name) => {
+        const h = md5(`name:${name.toLowerCase()}`);
+        return roll(h, 0, nameClaimRate) ? [{ id: md5(h).slice(0, 32), name }] : [];
+      });
+      return Response.json(claimed);
+    }
     if (path.startsWith("/texture/")) {
       return new Response(skinPng, { headers: { "Content-Type": "image/png" } });
     }
@@ -127,7 +141,7 @@ Bun.serve({
       return new Response("");
     }
     if (path === "/stats") {
-      return Response.json({ profileRequests, errors });
+      return Response.json({ profileRequests, bulkNameRequests, errors });
     }
     return new Response("not found", { status: 404 });
   },

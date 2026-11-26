@@ -4564,8 +4564,8 @@
                         "name": "${ds}"
                       },
                       "spec": {
-                        "expr": "sum by (length, outcome) (rate(name_sweep_checks_total{job=\"mc_utils\"}[$__rate_interval]))",
-                        "legendFormat": "{{length}} chars \u00b7 {{outcome}}"
+                        "expr": "sum by (source, length, outcome) (rate(name_sweep_checks_total{job=\"mc_utils\"}[$__rate_interval]))",
+                        "legendFormat": "{{source}} {{length}} chars \u00b7 {{outcome}}"
                       }
                     },
                     "refId": "A",
@@ -4634,8 +4634,8 @@
                         "name": "${ds}"
                       },
                       "spec": {
-                        "expr": "sum by (length) (increase(name_sweep_checks_total{job=\"mc_utils\",outcome=\"new_player\"}[1h]))",
-                        "legendFormat": "{{length}} chars"
+                        "expr": "sum by (source, length) (increase(name_sweep_checks_total{job=\"mc_utils\",outcome=\"new_player\"}[1h]))",
+                        "legendFormat": "{{source}} {{length}} chars"
                       }
                     },
                     "refId": "A",
