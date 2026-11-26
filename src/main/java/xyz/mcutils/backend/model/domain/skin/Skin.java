@@ -99,12 +99,12 @@ public class Skin extends Texture implements PartRenderable<Skin, Skin.SkinPart>
     }
 
     /**
-     * Rewrites rendered part URLs to use a player username or UUID in the path
-     * (e.g. for save-as filenames and player profile links).
+     * Rewrites the texture and rendered part URLs to resolve through the owning player's UUID.
      */
-    public void usePlayerPartUrls(String query) {
+    public void usePlayerUrls(UUID playerId) {
+        setTextureUrl("%s/skins/%s/texture.png".formatted(AppConfig.INSTANCE.getWebPublicUrl(), playerId));
         for (SkinPart part : SkinPart.values()) {
-            this.parts.put(part.name(), partUrl(query, part));
+            this.parts.put(part.name(), partUrl(playerId, part));
         }
     }
 
@@ -199,9 +199,9 @@ public class Skin extends Texture implements PartRenderable<Skin, Skin.SkinPart>
         );
     }
 
-    public static Skin fromRowForPlayer(SkinRow skinRow, String username) {
+    public static Skin fromRowForPlayer(SkinRow skinRow, UUID playerId) {
         Skin skin = fromRow(skinRow);
-        skin.usePlayerPartUrls(username);
+        skin.usePlayerUrls(playerId);
         return skin;
     }
 }

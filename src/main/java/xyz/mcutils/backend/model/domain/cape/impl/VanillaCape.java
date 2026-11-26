@@ -115,6 +115,18 @@ public class VanillaCape extends Cape<VanillaCape.Part> {
         }
     }
 
+    public static VanillaCape fromRowForPlayer(CapeRow capeRow, UUID playerId) {
+        VanillaCape cape = fromRow(capeRow);
+        String base = "%s/capes/%s".formatted(AppConfig.INSTANCE.getWebPublicUrl(), playerId);
+        cape.setTextureUrl(base + "/texture.png");
+        Map<String, String> parts = new HashMap<>();
+        for (Part p : Part.values()) {
+            parts.put(p.name(), "%s/%s.png".formatted(base, p.name().toLowerCase()));
+        }
+        cape.setParts(parts);
+        return cape;
+    }
+
     public static VanillaCape fromRow(CapeRow capeRow) {
         return new VanillaCape(
                 capeRow.getId(),
