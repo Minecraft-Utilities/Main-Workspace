@@ -3,7 +3,6 @@ package xyz.mcutils.backend.service;
 import io.prometheus.metrics.model.registry.PrometheusRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import xyz.mcutils.backend.metric.Metric;
 import xyz.mcutils.backend.metric.impl.api.ExternalApiRequestsMetric;
@@ -20,6 +19,7 @@ import xyz.mcutils.backend.metric.impl.skin.SkinRenderMetric;
 import xyz.mcutils.backend.metric.impl.skin.TrackedSkinsMetric;
 import xyz.mcutils.backend.metric.impl.storage.StorageOperationMetric;
 import xyz.mcutils.backend.metric.impl.websocket.WebSocketConnectionsMetric;
+import xyz.mcutils.backend.repository.postgres.PreviousUsernameCheckRepository;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,7 +35,7 @@ public class MetricService {
     private final PreviousUsernameChecksDueMetric previousUsernameChecksDueMetric;
 
     public MetricService(@Lazy PlayerSubmitService playerSubmitService, @Lazy PlayerService playerService, @Lazy MojangService mojangService,
-                         @Lazy StatisticsService statisticsService, @Lazy PreviousUsernameResolveService previousUsernameResolveService) {
+                         @Lazy StatisticsService statisticsService, PreviousUsernameCheckRepository previousUsernameCheckRepository) {
         // DNS
         this.registerMetric(new DnsQueryMetric());
 
@@ -70,7 +70,7 @@ public class MetricService {
         this.registerMetric(new PreviousUsernameChecksMetric());
         this.registerMetric(new NameSweepChecksMetric());
         this.registerMetric(new PlayersCreatedMetric());
-        this.previousUsernameChecksDueMetric = new PreviousUsernameChecksDueMetric(previousUsernameResolveService);
+        this.previousUsernameChecksDueMetric = new PreviousUsernameChecksDueMetric(previousUsernameCheckRepository);
         this.registerMetric(this.previousUsernameChecksDueMetric);
         this.topSubmittedPlayersMetric = new TopSubmittedPlayersMetric(playerService);
         this.registerMetric(this.topSubmittedPlayersMetric);
@@ -116,9 +116,8 @@ public class MetricService {
 
     /**
      * Refreshes the in-memory snapshots behind gauges that must not query Postgres/Redis on
-     * the /metrics scrape path. Runs on the shared scheduler.
+     * the /metrics scrape path.
      */
-    @Scheduled(fixedRate = 30_000, initialDelay = 10_000)
     public void refreshCachedMetrics() {
         try {
             this.topSubmittedPlayersMetric.refresh();

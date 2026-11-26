@@ -17,7 +17,6 @@ import org.apache.commons.io.FileUtils;
 import org.codehaus.plexus.archiver.tar.TarGZipUnArchiver;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import xyz.mcutils.backend.Main;
 import xyz.mcutils.backend.exception.impl.BadRequestException;
@@ -374,10 +373,8 @@ public class MaxMindService {
     }
 
     /**
-     * Scheduled task to check and update databases every 3 days.
-     * Runs at 2 AM daily to check if databases need updating.
+     * Checks whether the databases are stale and updates them.
      */
-    @Scheduled(cron = "0 0 2 * * *")
     @SneakyThrows
     public void scheduledDatabaseUpdate() {
         loadDatabases(true);

@@ -2,7 +2,6 @@ package xyz.mcutils.backend.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import xyz.mcutils.backend.common.IPUtils;
 import xyz.mcutils.backend.exception.impl.BadRequestException;
@@ -41,7 +40,6 @@ public class PlayerViewService {
         this.playerViewEventRepository = playerViewEventRepository;
     }
 
-    @Scheduled(cron = "0 0 * * * *") // Every hour
     public void rebuildMonthlyViews() {
         long before = System.currentTimeMillis();
         this.playerMonthlyViewsRepository.rebuild();

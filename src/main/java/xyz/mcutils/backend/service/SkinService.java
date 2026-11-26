@@ -11,7 +11,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -113,7 +112,6 @@ public class SkinService {
         INSTANCE = this;
     }
 
-    @Scheduled(cron = "0 0 * * * *") // Every hour
     public void updateTrendingHeat() {
         long before = System.currentTimeMillis();
         this.skinTrendingRepository.rebuild(VanillaSkinTextureIds.ALL);

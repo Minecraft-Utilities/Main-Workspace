@@ -7,7 +7,6 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -18,7 +17,6 @@ import java.util.concurrent.Executors;
 
 @Slf4j
 @SpringBootApplication
-@EnableScheduling
 @EnableCaching
 public class Main {
     public static final ExecutorService EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();

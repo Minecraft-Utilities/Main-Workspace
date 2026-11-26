@@ -8,7 +8,6 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import xyz.mcutils.backend.common.WebRequest;
 import xyz.mcutils.backend.metric.impl.api.ExternalApiRequestsMetric;
@@ -183,10 +182,9 @@ public class MojangService {
 
     /**
      * Fetches the current list of banned server hashes from Mojang and updates {@link #blockedServerHashes}.
-     * Runs daily at midnight. Uses the shared HTTP client (connection pooling, proxy if configured).
+     * Uses the shared HTTP client (connection pooling, proxy if configured).
      */
-    @Scheduled(cron = "0 0 0 * * *")
-    private void updateBlockedServers() {
+    public void updateBlockedServers() {
         log.info("Fetching blocked servers from Mojang");
         byte[] bytes = webRequest.request(sessionServerEndpoint + "/blockedservers").asBytes();
         if (bytes == null) {

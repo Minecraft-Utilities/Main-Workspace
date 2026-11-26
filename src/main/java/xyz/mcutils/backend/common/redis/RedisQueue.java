@@ -9,8 +9,6 @@ import org.springframework.data.redis.serializer.RedisSerializer;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 
 /**
  * Redis-backed FIFO queue using a list, with an optional companion set for O(1) deduplication.
@@ -165,32 +163,6 @@ public final class RedisQueue {
     public long size() {
         Long size = redis.opsForList().size(listKey);
         return size != null ? size : 0L;
-    }
-
-    /**
-     * Runs a blocking consumer loop until {@code running} is false.
-     */
-    public void consumeBatches(
-            AtomicBoolean running,
-            int batchSize,
-            Duration emptyBlockTimeout,
-            Consumer<List<String>> batchProcessor) {
-        Objects.requireNonNull(running, "running");
-        Objects.requireNonNull(batchProcessor, "batchProcessor");
-        while (running.get()) {
-            try {
-                Optional<List<String>> batch = blockingTakeBatch(batchSize, emptyBlockTimeout);
-                if (batch.isEmpty()) {
-                    continue;
-                }
-                batchProcessor.accept(batch.get());
-            } catch (Exception e) {
-                if (!running.get()) {
-                    break;
-                }
-                throw e;
-            }
-        }
     }
 
     public ListOperations<String, String> listOps() {

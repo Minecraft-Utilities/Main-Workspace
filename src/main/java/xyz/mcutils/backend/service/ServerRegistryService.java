@@ -6,10 +6,8 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.kohsuke.github.GHCommit;
 import org.kohsuke.github.GitHub;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import xyz.mcutils.backend.Constants;
-import xyz.mcutils.backend.Main;
 import xyz.mcutils.backend.common.DomainUtils;
 import xyz.mcutils.backend.common.EnumUtils;
 import xyz.mcutils.backend.common.FuzzySearch;
@@ -45,9 +43,6 @@ public class ServerRegistryService {
     public ServerRegistryService(WebRequest webRequest) {
         this.webRequest = webRequest;
         this.githubClient = GitHub.connectAnonymously();
-
-        // run async so it doesn't block the application startup
-        Main.EXECUTOR.submit(this::updateRegistry);
     }
 
     /**
@@ -132,9 +127,8 @@ public class ServerRegistryService {
     /**
      * Update the Server Registry data.
      */
-    @Scheduled(cron = "0 */10 * * * *")
     @SneakyThrows
-    private void updateRegistry() {
+    public void updateRegistry() {
         var commits = githubClient.getRepository(REPOSITORY_OWNER + "/" + REPOSITORY_NAME).listCommits().withPageSize(1).iterator();
         if (!commits.hasNext()) {
             throw new IllegalStateException("No commits in repository");

@@ -54,7 +54,7 @@ class PlayerNameChangeBroadcastTest {
                 mock(PlayerService.class),
                 mock(MojangService.class),
                 mock(StatisticsService.class),
-                mock(PreviousUsernameResolveService.class)
+                mock(PreviousUsernameCheckRepository.class)
         );
         // ... and bumps the name-change counter on the statistics singleton.
         new StatisticsService(null, null, null, null, null);

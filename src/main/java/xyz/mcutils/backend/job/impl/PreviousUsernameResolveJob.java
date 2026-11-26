@@ -1,19 +1,24 @@
-package xyz.mcutils.backend.service;
+package xyz.mcutils.backend.job.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.ContextClosedEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import xyz.mcutils.backend.Main;
 import xyz.mcutils.backend.common.AdaptiveRateLimiter;
 import xyz.mcutils.backend.common.FutureUtils;
 import xyz.mcutils.backend.common.UUIDUtils;
 import xyz.mcutils.backend.exception.impl.RateLimitException;
+import xyz.mcutils.backend.job.Job;
+import xyz.mcutils.backend.job.JobContext;
+import xyz.mcutils.backend.job.JobResult;
+import xyz.mcutils.backend.job.JobTrigger;
 import xyz.mcutils.backend.metric.impl.player.PreviousUsernameChecksMetric;
 import xyz.mcutils.backend.model.token.mojang.MojangUsernameToUuidToken;
 import xyz.mcutils.backend.repository.postgres.PreviousUsernameCheckRepository;
+import xyz.mcutils.backend.service.MetricService;
+import xyz.mcutils.backend.service.MojangService;
+import xyz.mcutils.backend.service.PlayerService;
+import xyz.mcutils.backend.service.PlayerSubmitService;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -25,82 +30,57 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Resolves released usernames through Mojang's bulk name lookup to discover accounts that are not
  * tracked yet. A name is only checked once Mojang's 37-day hold has passed, so a profile returned
  * for it belongs to a different account than the tracked player that gave the name up.
  */
-@Service
+@Component
 @Slf4j
-public class PreviousUsernameResolveService {
+public class PreviousUsernameResolveJob implements Job {
 
     private static final int BATCH_SIZE = 2000;
     private static final int CHUNK_SIZE = 10;
     private static final Duration EMPTY_WAIT = Duration.ofMinutes(1);
     private static final Duration FAILURE_BACKOFF = Duration.ofHours(1);
-    private static final Duration WAIT_POLL = Duration.ofSeconds(1);
 
     private final PreviousUsernameCheckRepository previousUsernameCheckRepository;
     private final MojangService mojangService;
     private final PlayerService playerService;
     private final PlayerSubmitService playerSubmitService;
     private final AdaptiveRateLimiter requestRateLimiter;
-    private final boolean enabled;
-    private final AtomicBoolean running = new AtomicBoolean(true);
 
-    public PreviousUsernameResolveService(
+    public PreviousUsernameResolveJob(
             PreviousUsernameCheckRepository previousUsernameCheckRepository,
             MojangService mojangService,
             PlayerService playerService,
             PlayerSubmitService playerSubmitService,
-            @Value("${mc-utils.previous-username.enabled:true}") boolean enabled,
             @Value("${mc-utils.previous-username.max-requests-per-second:50}") double maxRequestsPerSecond
     ) {
         this.previousUsernameCheckRepository = previousUsernameCheckRepository;
         this.mojangService = mojangService;
         this.playerService = playerService;
         this.playerSubmitService = playerSubmitService;
-        this.enabled = enabled;
         this.requestRateLimiter = new AdaptiveRateLimiter(maxRequestsPerSecond);
     }
 
-    @EventListener(ContextClosedEvent.class)
-    public void onContextClosed() {
-        this.running.set(false);
+    @Override
+    public String name() {
+        return "previous-username-resolve";
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    public void startResolveLoop() {
-        if (!this.enabled) {
-            log.info("Previous username resolver is disabled");
-            return;
-        }
-        Main.EXECUTOR.submit(this::runLoop);
+    @Override
+    public JobTrigger trigger() {
+        return JobTrigger.continuous(EMPTY_WAIT);
     }
 
-    public long countDue() {
-        return this.previousUsernameCheckRepository.countDue(Instant.now());
+    @Override
+    public JobResult run(JobContext context) {
+        return processBatch(context) ? JobResult.WORKED : JobResult.IDLE;
     }
 
-    private void runLoop() {
-        while (this.running.get()) {
-            try {
-                if (!processBatch()) {
-                    waitForWork();
-                }
-            } catch (Exception e) {
-                if (!this.running.get()) {
-                    break;
-                }
-                log.error("Previous username resolve loop error, continuing", e);
-                waitForWork();
-            }
-        }
-    }
-
-    private boolean processBatch() {
+    private boolean processBatch(JobContext context) {
         Instant now = Instant.now();
         List<String> due = this.previousUsernameCheckRepository.selectDue(now, BATCH_SIZE);
         if (due.isEmpty()) {
@@ -110,7 +90,7 @@ public class PreviousUsernameResolveService {
         long alreadyTracked = this.previousUsernameCheckRepository.deleteOwnedByTrackedPlayers(due);
         List<String> remaining = alreadyTracked == 0 ? due : this.previousUsernameCheckRepository.selectDue(now, BATCH_SIZE);
         Totals totals = new Totals(alreadyTracked, 0, 0, 0, 0, 0);
-        if (this.running.get()) {
+        if (context.isRunning()) {
             totals = totals.plus(resolveChunks(remaining, now));
         }
 
@@ -185,18 +165,6 @@ public class PreviousUsernameResolveService {
 
     private void record(PreviousUsernameChecksMetric.Outcome outcome, long count) {
         MetricService.getMetric(PreviousUsernameChecksMetric.class).inc(outcome, count);
-    }
-
-    private void waitForWork() {
-        long deadline = System.nanoTime() + EMPTY_WAIT.toNanos();
-        while (this.running.get() && System.nanoTime() < deadline) {
-            try {
-                Thread.sleep(WAIT_POLL);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
-            }
-        }
     }
 
     private record Totals(long alreadyTracked, long newPlayers, long alreadyQueued, long unclaimed, long failed, long rateLimited) {

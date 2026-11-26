@@ -1,18 +1,24 @@
-package xyz.mcutils.backend.service;
+package xyz.mcutils.backend.job.impl;
 
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.ContextClosedEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import xyz.mcutils.backend.exception.impl.RateLimitException;
+import xyz.mcutils.backend.job.Job;
+import xyz.mcutils.backend.job.JobContext;
+import xyz.mcutils.backend.job.JobResult;
+import xyz.mcutils.backend.job.JobTrigger;
 import xyz.mcutils.backend.metric.impl.player.PlayerRefreshMetric;
 import xyz.mcutils.backend.model.token.mojang.MojangProfileToken;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.DuePlayer;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.ScheduleUpdate;
+import xyz.mcutils.backend.service.MetricService;
+import xyz.mcutils.backend.service.MojangRateLimiter;
+import xyz.mcutils.backend.service.MojangService;
+import xyz.mcutils.backend.service.PlayerService;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -25,18 +31,17 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@Service
+@Component
 @Slf4j
-public class PlayerRefreshService {
+public class PlayerRefreshJob implements Job {
     private static final Duration CHUNK_TIMEOUT = Duration.ofMinutes(10);
     private final int refreshChunkSize;
     private final int concurrentFetches;
@@ -45,9 +50,8 @@ public class PlayerRefreshService {
     private final PlayerService playerService;
     private final PlayerRefreshRepository playerRefreshRepository;
     private final ExecutorService refreshExecutor;
-    private final AtomicBoolean running = new AtomicBoolean(true);
 
-    public PlayerRefreshService(
+    public PlayerRefreshJob(
             MojangService mojangService,
             PlayerService playerService,
             PlayerRefreshRepository playerRefreshRepository,
@@ -67,44 +71,33 @@ public class PlayerRefreshService {
         );
     }
 
-    @EventListener(ContextClosedEvent.class)
-    public void onContextClosed() {
-        running.set(false);
+    @PreDestroy
+    public void shutdown() {
         refreshExecutor.shutdownNow();
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    public void startRefreshTask() {
-        log.info("Starting player background refresh (chunk size {}, Mojang rate limit configured via mc-utils.player-refresh.mojang-rate-limit)",
-                refreshChunkSize);
-        Thread.ofPlatform().daemon(true).name("player-refresh").start(() -> {
-            while (running.get()) {
-                try {
-                    Instant now = Instant.now();
-                    List<DuePlayer> playerRows = this.playerRefreshRepository.claimDue(now, refreshChunkSize);
-                    if (playerRows.isEmpty()) {
-                        Thread.sleep(Duration.ofSeconds(10));
-                        continue;
-                    }
-                    log.info("Player refresh claimed {} players", playerRows.size());
-                    refreshChunk(playerRows);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                } catch (Exception e) {
-                    log.error("Player refresh loop error, retrying in 5s", e);
-                    try {
-                        Thread.sleep(Duration.ofSeconds(5));
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
-            }
-        });
+    @Override
+    public String name() {
+        return "player-refresh";
     }
 
-    private void refreshChunk(List<DuePlayer> playerRows) {
+    @Override
+    public JobTrigger trigger() {
+        return JobTrigger.continuous(Duration.ofSeconds(10));
+    }
+
+    @Override
+    public JobResult run(JobContext context) {
+        List<DuePlayer> playerRows = this.playerRefreshRepository.claimDue(Instant.now(), refreshChunkSize);
+        if (playerRows.isEmpty()) {
+            return JobResult.IDLE;
+        }
+        log.info("Player refresh claimed {} players", playerRows.size());
+        refreshChunk(playerRows, context);
+        return JobResult.WORKED;
+    }
+
+    private void refreshChunk(List<DuePlayer> playerRows, JobContext context) {
         long chunkStart = System.currentTimeMillis();
         List<UUID> failedIds = Collections.synchronizedList(new ArrayList<>());
         Map<String, AtomicInteger> failureReasons = new ConcurrentHashMap<>();
@@ -115,11 +108,11 @@ public class PlayerRefreshService {
         List<CompletableFuture<Void>> futures = new ArrayList<>(playerRows.size());
 
         for (DuePlayer playerRow : playerRows) {
-            if (!running.get()) {
+            if (!context.isRunning()) {
                 return;
             }
             futures.add(CompletableFuture.runAsync(
-                    () -> refreshPlayer(playerRow, failedIds, failureReasons, persisted, unchanged, finishedIds, inflightFetches),
+                    () -> refreshPlayer(playerRow, failedIds, failureReasons, persisted, unchanged, finishedIds, inflightFetches, context),
                     refreshExecutor
             ));
         }
@@ -204,9 +197,10 @@ public class PlayerRefreshService {
             AtomicInteger persisted,
             Collection<ScheduleUpdate> unchanged,
             Set<UUID> finishedIds,
-            Semaphore inflightFetches
+            Semaphore inflightFetches,
+            JobContext context
     ) {
-        if (!running.get()) {
+        if (!context.isRunning()) {
             return;
         }
         try {
@@ -218,7 +212,7 @@ public class PlayerRefreshService {
         }
         try {
             mojangRateLimiter.acquire();
-            PlayerService.PlayerUpdate update = fetchProfile(playerRow, failedIds, failureReasons);
+            PlayerService.PlayerUpdate update = fetchProfile(playerRow, failedIds, failureReasons, context);
             if (update == null) {
                 return;
             }
@@ -234,9 +228,10 @@ public class PlayerRefreshService {
     private PlayerService.PlayerUpdate fetchProfile(
             DuePlayer playerRow,
             List<UUID> failedIds,
-            Map<String, AtomicInteger> failureReasons
+            Map<String, AtomicInteger> failureReasons,
+            JobContext context
     ) {
-        if (!running.get()) {
+        if (!context.isRunning()) {
             return null;
         }
         MetricService.getMetric(PlayerRefreshMetric.class).recordMojangLookup();

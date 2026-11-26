@@ -1,4 +1,4 @@
-package xyz.mcutils.backend.service;
+package xyz.mcutils.backend.job.impl;
 
 import org.junit.jupiter.api.Test;
 
@@ -7,13 +7,13 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class NameSweepServiceTest {
+class NameSweepJobTest {
     @Test
     void enumeratesEveryNameOfALengthExactlyOnce() {
-        long total = NameSweepService.totalNames(3);
+        long total = NameSweepJob.totalNames(3);
         Set<String> names = new HashSet<>();
         for (long i = 0; i < total; i++) {
-            names.add(NameSweepService.nameAt(i, 3));
+            names.add(NameSweepJob.nameAt(i, 3));
         }
         assertEquals(50_653, total);
         assertEquals(total, names.size());
@@ -21,7 +21,7 @@ class NameSweepServiceTest {
 
     @Test
     void firstAndLastNamesAreTheAlphabetEnds() {
-        assertEquals("aaaa", NameSweepService.nameAt(0, 4));
-        assertEquals("____", NameSweepService.nameAt(NameSweepService.totalNames(4) - 1, 4));
+        assertEquals("aaaa", NameSweepJob.nameAt(0, 4));
+        assertEquals("____", NameSweepJob.nameAt(NameSweepJob.totalNames(4) - 1, 4));
     }
 }

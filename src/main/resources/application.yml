@@ -19,12 +19,6 @@ spring:
   threads:
     virtual:
       enabled: true
-  # More than one scheduler thread so long-running hourly maintenance jobs
-  # (trending heat, monthly views) cannot stall the other scheduled tasks.
-  task:
-    scheduling:
-      pool:
-        size: 4
 
   # Don't serialize null values by default with Jackson
   jackson:
@@ -180,13 +174,39 @@ mc-utils:
 
   # Bulk lookup of released usernames to discover players that are not tracked yet.
   previous-username:
-    enabled: true
     max-requests-per-second: 50
 
   # Enumerates every username of the given lengths to discover players that are not tracked yet.
   # Each length does one pass at the initial rate, then keeps sweeping at the continuous rate.
   name-sweep:
-    enabled: true
     lengths: 4,5
     initial-requests-per-second: 50
     continuous-requests-per-second: 10
+
+  # Background jobs. Every job runs unless switched off here by name.
+  jobs:
+    player-refresh:
+      enabled: true
+    player-submit:
+      enabled: true
+    legacy-skin-check:
+      enabled: true
+    previous-username-resolve:
+      enabled: true
+    # One job per length in mc-utils.name-sweep.lengths: name-sweep-4, name-sweep-5, ...
+    name-sweep-4:
+      enabled: true
+    name-sweep-5:
+      enabled: true
+    maxmind-update:
+      enabled: true
+    mojang-blocked-servers:
+      enabled: true
+    player-views-rebuild:
+      enabled: true
+    skin-trending-rebuild:
+      enabled: true
+    server-registry-update:
+      enabled: true
+    metrics-refresh:
+      enabled: true

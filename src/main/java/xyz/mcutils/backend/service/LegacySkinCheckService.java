@@ -1,79 +1,26 @@
 package xyz.mcutils.backend.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.cache.CacheManager;
-import org.springframework.http.MediaType;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.ContextClosedEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.ResourceAccessException;
-import xyz.mcutils.backend.Main;
-import xyz.mcutils.backend.common.AdaptiveRateLimiter;
-import xyz.mcutils.backend.common.FutureUtils;
-import xyz.mcutils.backend.common.ImageUtils;
-import xyz.mcutils.backend.common.WebRequest;
 import xyz.mcutils.backend.common.redis.RedisQueue;
 import xyz.mcutils.backend.common.redis.RedisQueueFactory;
-import xyz.mcutils.backend.exception.impl.RateLimitException;
-import xyz.mcutils.backend.repository.postgres.SkinRepository;
 
-import java.awt.image.BufferedImage;
-import java.time.Duration;
-import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Collection;
+import java.util.List;
 
 /**
- * Background worker that resolves 64×32 legacy skin status for newly tracked skins.
- * Queue payloads are skin {@code textureId} strings.
+ * Queue of newly tracked skin textures awaiting legacy status resolution.
  */
-@SuppressWarnings("UnstableApiUsage")
 @Service
 @Slf4j
 public class LegacySkinCheckService {
 
-    private static final String QUEUE_NAME = "legacy-skin-check-queue";
-    private static final int BATCH_SIZE = 500;
-    private static final int RATE_LIMIT = 100;
-    private static final Duration EMPTY_QUEUE_BLOCK = Duration.ofSeconds(2);
-    private static final String SKIN_TEXTURE_CACHE = "skinByTextureId";
+    public static final String QUEUE_NAME = "legacy-skin-check-queue";
 
-    private final AdaptiveRateLimiter rateLimiter = new AdaptiveRateLimiter(RATE_LIMIT);
     private final RedisQueue checkQueue;
-    private final SkinRepository skinRepository;
-    private final WebRequest webRequest;
-    private final StorageService storageService;
-    private final CacheManager cacheManager;
-    private final AtomicBoolean running = new AtomicBoolean(true);
-    private final String texturesEndpoint;
 
-    public LegacySkinCheckService(
-            RedisQueueFactory queueFactory,
-            SkinRepository skinRepository,
-            WebRequest webRequest,
-            StorageService storageService,
-            CacheManager cacheManager,
-            @Value("${mc-utils.mojang.textures-url:https://textures.minecraft.net}") String texturesEndpoint
-    ) {
-        this.texturesEndpoint = texturesEndpoint;
+    public LegacySkinCheckService(RedisQueueFactory queueFactory) {
         this.checkQueue = queueFactory.getQueue(QUEUE_NAME);
-        this.skinRepository = skinRepository;
-        this.webRequest = webRequest;
-        this.storageService = storageService;
-        this.cacheManager = cacheManager;
-    }
-
-    @EventListener(ContextClosedEvent.class)
-    public void onContextClosed() {
-        running.set(false);
-    }
-
-    @EventListener(ApplicationReadyEvent.class)
-    public void startConsumer() {
-        Main.EXECUTOR.submit(this::runConsumerLoop);
     }
 
     /**
@@ -111,120 +58,5 @@ public class LegacySkinCheckService {
 
     public long getQueueSize() {
         return checkQueue.size();
-    }
-
-    private void runConsumerLoop() {
-        while (running.get()) {
-            try {
-                Optional<List<String>> batch = checkQueue.blockingTakeBatch(BATCH_SIZE, EMPTY_QUEUE_BLOCK);
-                if (batch.isEmpty()) {
-                    continue;
-                }
-                processBatch(batch.get());
-            } catch (Exception e) {
-                if (!running.get()) {
-                    break;
-                }
-                log.error("Legacy skin check consumer error, continuing", e);
-            }
-        }
-    }
-
-    private void processBatch(List<String> textureIds) {
-        Queue<CheckResult> results = new ConcurrentLinkedQueue<>();
-        List<Future<Void>> futures = new ArrayList<>();
-
-        for (String textureId : textureIds) {
-            if (textureId == null || textureId.isBlank()) {
-                continue;
-            }
-            rateLimiter.acquire();
-            futures.add(Main.EXECUTOR.submit(() -> {
-                results.add(checkLegacy(textureId.trim()));
-                return null;
-            }));
-        }
-
-        FutureUtils.awaitAll(futures, "legacy-skin-check");
-
-        List<String> toRequeue = new ArrayList<>();
-        List<String> completed = new ArrayList<>();
-        List<String> legacyIds = new ArrayList<>();
-        List<String> modernIds = new ArrayList<>();
-
-        for (CheckResult result : results) {
-            switch (result.outcome()) {
-                case RETRY -> toRequeue.add(result.textureId());
-                case DROP -> completed.add(result.textureId());
-                case SUCCESS -> {
-                    (result.legacy() ? legacyIds : modernIds).add(result.textureId());
-                    completed.add(result.textureId());
-                }
-            }
-        }
-        if (!legacyIds.isEmpty()) {
-            skinRepository.updateLegacyByTextureIds(legacyIds, true);
-        }
-        if (!modernIds.isEmpty()) {
-            skinRepository.updateLegacyByTextureIds(modernIds, false);
-        }
-
-        if (!toRequeue.isEmpty()) {
-            checkQueue.requeue(toRequeue);
-        }
-        if (!completed.isEmpty()) {
-            checkQueue.removeDedupeKeys(completed);
-        }
-    }
-
-    private CheckResult checkLegacy(String textureId) {
-        try {
-            String textureUrl = texturesEndpoint + "/texture/" + textureId;
-            byte[] bytes = webRequest.request(textureUrl).asBytes();
-            rateLimiter.speedUp();
-            if (bytes == null) {
-                log.debug("No response fetching skin texture {}", textureId);
-            }
-            BufferedImage image = ImageUtils.decodeImage(bytes);
-            boolean legacy = image.getWidth() == 64 && image.getHeight() == 32;
-            String fileName = textureId + ".png";
-            if (!storageService.exists(StorageService.Bucket.SKINS, fileName)) {
-                storageService.upload(StorageService.Bucket.SKINS, fileName, MediaType.IMAGE_PNG_VALUE, bytes);
-            }
-            return CheckResult.success(textureId, legacy);
-        } catch (RateLimitException e) {
-            rateLimiter.slowDown();
-            log.debug("Rate limited checking legacy status for {}, will retry", textureId);
-            return CheckResult.retry(textureId);
-        } catch (ResourceAccessException e) {
-            log.debug("Timed out checking legacy status for {}, will retry", textureId);
-            return CheckResult.retry(textureId);
-        } catch (IllegalStateException e) {
-            log.debug("Failed to decode skin texture {}: {}", textureId, e.getMessage());
-            return CheckResult.success(textureId, false);
-        } catch (Exception e) {
-            log.warn("Unexpected error checking legacy status for {}, dropping", textureId, e);
-            return CheckResult.drop(textureId);
-        }
-    }
-
-    private record CheckResult(String textureId, Outcome outcome, boolean legacy) {
-        enum Outcome {
-            SUCCESS,
-            RETRY,
-            DROP
-        }
-
-        static CheckResult success(String textureId, boolean legacy) {
-            return new CheckResult(textureId, Outcome.SUCCESS, legacy);
-        }
-
-        static CheckResult drop(String textureId) {
-            return new CheckResult(textureId, Outcome.DROP, false);
-        }
-
-        static CheckResult retry(String textureId) {
-            return new CheckResult(textureId, Outcome.RETRY, false);
-        }
     }
 }
