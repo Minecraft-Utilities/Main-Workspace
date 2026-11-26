@@ -51,7 +51,7 @@ public class NameModelSweepJob implements JobProvider {
         this.nameResolveService = nameResolveService;
         this.lengths = lengths;
         this.candidatesPerLength = candidatesPerLength;
-        this.rateLimiter = new AdaptiveRateLimiter(requestsPerSecond);
+        this.rateLimiter = new AdaptiveRateLimiter("name-model-sweep", requestsPerSecond);
     }
 
     @Override

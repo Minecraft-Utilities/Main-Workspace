@@ -15,7 +15,7 @@ public class MojangRateLimiter {
     private final AdaptiveRateLimiter rateLimiter;
 
     public MojangRateLimiter(@Value("${mc-utils.player-refresh.mojang-rate-limit:600}") double rateLimit) {
-        this.rateLimiter = new AdaptiveRateLimiter(rateLimit);
+        this.rateLimiter = new AdaptiveRateLimiter("mojang-profiles", rateLimit);
     }
 
     /**

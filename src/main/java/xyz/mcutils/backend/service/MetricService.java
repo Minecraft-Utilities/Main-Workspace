@@ -13,6 +13,7 @@ import xyz.mcutils.backend.metric.impl.dns.DnsQueryMetric;
 import xyz.mcutils.backend.metric.impl.ip.IpLookupMetric;
 import xyz.mcutils.backend.metric.impl.jvm.*;
 import xyz.mcutils.backend.metric.impl.mojang.MojangBlockedServersMetric;
+import xyz.mcutils.backend.metric.impl.mojang.RateLimiterRateMetric;
 import xyz.mcutils.backend.metric.impl.player.*;
 import xyz.mcutils.backend.metric.impl.server.ServerLookupMetric;
 import xyz.mcutils.backend.metric.impl.skin.SkinRenderMetric;
@@ -88,6 +89,7 @@ public class MetricService {
 
         // Mojang
         this.registerMetric(new MojangBlockedServersMetric(mojangService));
+        this.registerMetric(new RateLimiterRateMetric());
 
         // WebSocket
         this.registerMetric(new WebSocketConnectionsMetric());

@@ -29,7 +29,7 @@ import java.util.concurrent.Future;
 @Slf4j
 public class NameResolveService {
     private static final int CHUNK_SIZE = 10;
-    private static final Duration FAILURE_BACKOFF = Duration.ofMinutes(1);
+    private static final Duration FAILURE_BACKOFF = Duration.ofSeconds(5);
 
     private final NameSweepRepository nameSweepRepository;
     private final MojangService mojangService;

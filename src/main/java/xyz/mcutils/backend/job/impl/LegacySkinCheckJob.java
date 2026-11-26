@@ -43,7 +43,7 @@ public class LegacySkinCheckJob implements Job {
     private static final int RATE_LIMIT = 100;
     private static final Duration EMPTY_QUEUE_BLOCK = Duration.ofSeconds(2);
 
-    private final AdaptiveRateLimiter rateLimiter = new AdaptiveRateLimiter(RATE_LIMIT);
+    private final AdaptiveRateLimiter rateLimiter = new AdaptiveRateLimiter("legacy-skin-check", RATE_LIMIT);
     private final RedisQueue checkQueue;
     private final SkinRepository skinRepository;
     private final WebRequest webRequest;

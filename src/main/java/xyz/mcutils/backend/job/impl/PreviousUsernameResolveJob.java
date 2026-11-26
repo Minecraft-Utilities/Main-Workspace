@@ -62,7 +62,7 @@ public class PreviousUsernameResolveJob implements Job {
         this.mojangService = mojangService;
         this.playerService = playerService;
         this.playerSubmitService = playerSubmitService;
-        this.requestRateLimiter = new AdaptiveRateLimiter(maxRequestsPerSecond);
+        this.requestRateLimiter = new AdaptiveRateLimiter("previous-username-resolve", maxRequestsPerSecond);
     }
 
     @Override

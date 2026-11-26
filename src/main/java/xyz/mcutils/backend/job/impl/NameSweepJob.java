@@ -108,7 +108,7 @@ public class NameSweepJob implements JobProvider {
                         .orElse(new NameSweepRepository.Progress(0, 0));
                 this.next = progress.nextIndex();
                 this.passes = progress.passes();
-                this.rateLimiter = newRateLimiter(this.passes);
+                this.rateLimiter = newRateLimiter(this.length, this.passes);
                 log.info("Name sweep for length {} starting at {}/{} (pass {})", this.length, this.next, this.total, this.passes + 1);
             }
 
@@ -121,7 +121,7 @@ public class NameSweepJob implements JobProvider {
             if (this.next >= this.total) {
                 this.next = 0;
                 this.passes++;
-                this.rateLimiter = newRateLimiter(this.passes);
+                this.rateLimiter = newRateLimiter(this.length, this.passes);
                 log.info("Name sweep for length {} finished pass {}, continuing at {} req/s", this.length, this.passes, continuousRequestsPerSecond);
             }
             nameSweepRepository.saveProgress(this.length, this.next, this.passes);
@@ -129,8 +129,8 @@ public class NameSweepJob implements JobProvider {
         }
     }
 
-    private AdaptiveRateLimiter newRateLimiter(int passes) {
-        return new AdaptiveRateLimiter(passes == 0 ? this.initialRequestsPerSecond : this.continuousRequestsPerSecond);
+    private AdaptiveRateLimiter newRateLimiter(int length, int passes) {
+        return new AdaptiveRateLimiter("name-sweep-" + length, passes == 0 ? this.initialRequestsPerSecond : this.continuousRequestsPerSecond);
     }
 
     private void sweepBatch(int length, long start, long end, AdaptiveRateLimiter rateLimiter, JobContext context) {
