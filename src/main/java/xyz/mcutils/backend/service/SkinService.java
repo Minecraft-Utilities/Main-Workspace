@@ -139,18 +139,18 @@ public class SkinService {
 
     public SkinRow getSkinByQuery(String query) {
         if (!query.isEmpty() && query.chars().allMatch(Character::isDigit)) {
-            // All-digit names are valid usernames, so a player match wins over a skin ID.
+            // All-digit names are valid usernames, so an ID miss falls through to a player lookup.
+            Optional<SkinRow> bySkinId = query.length() <= 18 ? this.skinRepository.findById(Long.parseLong(query)) : Optional.empty();
+            if (bySkinId.isPresent()) {
+                return bySkinId.get();
+            }
             if (query.length() <= 16) {
-                Optional<SkinRow> playerSkin = this.playerRepository.findSkinByUsernameIgnoreCase(query);
-                if (playerSkin.isPresent()) {
-                    return playerSkin.get();
+                Optional<SkinRow> byPlayer = this.playerRepository.findSkinByUsernameIgnoreCase(query);
+                if (byPlayer.isPresent()) {
+                    return byPlayer.get();
                 }
             }
-            Optional<SkinRow> optionalSkinRow = this.skinRepository.findById(Long.parseLong(query));
-            if (optionalSkinRow.isEmpty()) {
-                throw new NotFoundException("Skin not found");
-            }
-            return optionalSkinRow.get();
+            throw new NotFoundException("Skin not found");
         }
         // By player (name or UUID)
         if (query.length() <= 36) {

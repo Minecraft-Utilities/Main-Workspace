@@ -101,18 +101,18 @@ public class CapeService {
 
     public CapeRow getCapeByQuery(String query) {
         if (!query.isEmpty() && query.chars().allMatch(Character::isDigit)) {
-            // All-digit names are valid usernames, so a player match wins over a cape ID.
+            // All-digit names are valid usernames, so an ID miss falls through to a player lookup.
+            Optional<CapeRow> byCapeId = query.length() <= 18 ? this.capeRepository.findById(Long.parseLong(query)) : Optional.empty();
+            if (byCapeId.isPresent()) {
+                return byCapeId.get();
+            }
             if (query.length() <= 16) {
-                Optional<CapeRow> playerCape = this.playerRepository.findCapeByUsernameIgnoreCase(query);
-                if (playerCape.isPresent()) {
-                    return playerCape.get();
+                Optional<CapeRow> byPlayer = this.playerRepository.findCapeByUsernameIgnoreCase(query);
+                if (byPlayer.isPresent()) {
+                    return byPlayer.get();
                 }
             }
-            Optional<CapeRow> optionalCapeRow = this.capeRepository.findById(Long.parseLong(query));
-            if (optionalCapeRow.isEmpty()) {
-                throw new NotFoundException("Cape not found");
-            }
-            return optionalCapeRow.get();
+            throw new NotFoundException("Cape not found");
         }
         // By player (name or UUID)
         if (query.length() <= 36) {
