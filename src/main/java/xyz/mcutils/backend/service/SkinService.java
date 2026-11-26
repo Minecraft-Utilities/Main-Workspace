@@ -25,9 +25,11 @@ import xyz.mcutils.backend.model.domain.skin.Skin;
 import xyz.mcutils.backend.model.domain.skin.SkinLookupSort;
 import xyz.mcutils.backend.model.domain.skin.VanillaSkinTextureIds;
 import xyz.mcutils.backend.model.persistence.postgres.PlayerRow;
+import xyz.mcutils.backend.model.persistence.postgres.SkinCurrentOwnersRow;
 import xyz.mcutils.backend.model.persistence.postgres.SkinRow;
 import xyz.mcutils.backend.model.token.mojang.SkinTextureToken;
 import xyz.mcutils.backend.repository.postgres.PlayerRepository;
+import xyz.mcutils.backend.repository.postgres.SkinCurrentOwnersRepository;
 import xyz.mcutils.backend.repository.postgres.SkinRepository;
 import xyz.mcutils.backend.repository.postgres.SkinTrendingRepository;
 
@@ -50,6 +52,7 @@ public class SkinService {
     public static SkinService INSTANCE;
 
     private final SkinRepository skinRepository;
+    private final SkinCurrentOwnersRepository skinCurrentOwnersRepository;
     private final SkinTrendingRepository skinTrendingRepository;
     private final PlayerRepository playerRepository;
     private final StorageService storageService;
@@ -90,11 +93,12 @@ public class SkinService {
     @Value("${mc-utils.renderer.skin.limits.max_size}")
     private int maxPartSize;
 
-    public SkinService(SkinRepository skinRepository, SkinTrendingRepository skinTrendingRepository, PlayerRepository playerRepository,
+    public SkinService(SkinRepository skinRepository, SkinCurrentOwnersRepository skinCurrentOwnersRepository, SkinTrendingRepository skinTrendingRepository, PlayerRepository playerRepository,
                        StorageService storageService, WebRequest webRequest, StatisticsService statisticsService,
                        PlatformTransactionManager transactionManager,
                        @Lazy LegacySkinCheckService legacySkinCheckService) {
         this.skinRepository = skinRepository;
+        this.skinCurrentOwnersRepository = skinCurrentOwnersRepository;
         this.skinTrendingRepository = skinTrendingRepository;
         this.playerRepository = playerRepository;
         this.storageService = storageService;
@@ -132,7 +136,7 @@ public class SkinService {
 
         List<String> usersUsing = this.playerRepository.findUsernamesBySkinId(skinRow.getId(), PageRequest.of(0, 250));
         skin.setAccountsSeenUsing(usersUsing);
-        skin.setCurrentOwners(this.playerRepository.countBySkinId(skinRow.getId()));
+        skin.setCurrentOwners(this.skinCurrentOwnersRepository.findById(skinRow.getId()).map(SkinCurrentOwnersRow::getOwners).orElse(0L));
 
         return skin;
     }
