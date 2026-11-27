@@ -33,3 +33,5 @@ data/
 /Minecraft-Utilities.iml
 dashboard.yml
 scripts/
+# Local benchmarks
+benchmark/
