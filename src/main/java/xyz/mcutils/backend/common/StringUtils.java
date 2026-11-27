@@ -5,9 +5,6 @@ package xyz.mcutils.backend.common;
  */
 public final class StringUtils {
 
-    private StringUtils() {
-    }
-
     /**
      * Caps a value at {@code maxLength} characters (code points), matching how PostgreSQL
      * counts {@code VARCHAR(n)}. Truncating by UTF-16 units instead could split a surrogate

@@ -5,9 +5,6 @@ package xyz.mcutils.backend.common;
  */
 public final class DomainUtils {
 
-    private DomainUtils() {
-    }
-
     /**
      * Returns whether a hostname matches a wildcard pattern (e.g. {@code *.example.com}).
      * The hostname should already be normalized (e.g. lowercased).

@@ -5,9 +5,6 @@ package xyz.mcutils.backend.common;
  */
 public final class RendererUtils {
 
-    private RendererUtils() {
-    }
-
     /**
      * Scales a logical position (x or y) to output pixels. Use for destination
      * coordinates so that 0 stays 0 and no transparent gap is left at the edge.
