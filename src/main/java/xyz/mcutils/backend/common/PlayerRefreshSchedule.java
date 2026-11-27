@@ -1,4 +1,4 @@
-package xyz.mcutils.backend.service;
+package xyz.mcutils.backend.common;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -42,9 +42,6 @@ public final class PlayerRefreshSchedule {
      * literals in {@code PlayerRefreshRepository} (kept as literals so Postgres can use the partial indexes).
      */
     public static final double HOT_CHANGE_THRESHOLD = 0.5;
-
-    private PlayerRefreshSchedule() {
-    }
 
     /**
      * Decayed evidence after a refresh, plus the interval until the next one.

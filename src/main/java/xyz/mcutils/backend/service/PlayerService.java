@@ -1,5 +1,7 @@
 package xyz.mcutils.backend.service;
 
+import xyz.mcutils.backend.common.PlayerRefreshSchedule;
+import xyz.mcutils.backend.common.MojangRateLimiter;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

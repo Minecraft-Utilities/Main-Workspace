@@ -1,7 +1,7 @@
-package xyz.mcutils.backend.service;
+package xyz.mcutils.backend.common;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import xyz.mcutils.backend.common.AdaptiveRateLimiter;
 
 /**
@@ -9,7 +9,7 @@ import xyz.mcutils.backend.common.AdaptiveRateLimiter;
  * refresh, submit queue, and on-demand refreshes). The configured rate is a ceiling: callers
  * report rate limits and successes so the shared rate backs off and recovers together.
  */
-@Service
+@Component
 public class MojangRateLimiter {
 
     private final AdaptiveRateLimiter rateLimiter;

@@ -17,7 +17,7 @@ import xyz.mcutils.backend.job.JobTrigger;
 import xyz.mcutils.backend.metric.impl.player.PlayerSubmitProcessingMetric;
 import xyz.mcutils.backend.model.token.mojang.MojangProfileToken;
 import xyz.mcutils.backend.service.MetricService;
-import xyz.mcutils.backend.service.MojangRateLimiter;
+import xyz.mcutils.backend.common.MojangRateLimiter;
 import xyz.mcutils.backend.service.MojangService;
 import xyz.mcutils.backend.service.PlayerService;
 import xyz.mcutils.backend.service.PlayerSubmitService;

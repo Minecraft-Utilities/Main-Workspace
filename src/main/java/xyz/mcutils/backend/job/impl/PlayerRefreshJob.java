@@ -16,7 +16,7 @@ import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.DuePlayer;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.ScheduleUpdate;
 import xyz.mcutils.backend.service.MetricService;
-import xyz.mcutils.backend.service.MojangRateLimiter;
+import xyz.mcutils.backend.common.MojangRateLimiter;
 import xyz.mcutils.backend.service.MojangService;
 import xyz.mcutils.backend.service.PlayerService;
 

@@ -3,9 +3,9 @@ package xyz.mcutils.backend.model.domain.server;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NonNull;
-import xyz.mcutils.backend.service.pinger.MinecraftServerPinger;
-import xyz.mcutils.backend.service.pinger.impl.BedrockMinecraftServerPinger;
-import xyz.mcutils.backend.service.pinger.impl.JavaMinecraftServerPinger;
+import xyz.mcutils.backend.common.pinger.MinecraftServerPinger;
+import xyz.mcutils.backend.common.pinger.impl.BedrockMinecraftServerPinger;
+import xyz.mcutils.backend.common.pinger.impl.JavaMinecraftServerPinger;
 
 /**
  * A platform a Minecraft

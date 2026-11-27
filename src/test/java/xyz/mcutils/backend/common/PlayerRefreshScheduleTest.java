@@ -1,4 +1,4 @@
-package xyz.mcutils.backend.service;
+package xyz.mcutils.backend.common;
 
 import org.junit.jupiter.api.Test;
 

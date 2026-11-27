@@ -20,7 +20,7 @@ import java.util.UUID;
  * keeps each chunk to a handful of statements and avoids loading entities that are only read.
  * <p>
  * The {@code 0.5} literals MUST stay in sync with
- * {@link xyz.mcutils.backend.service.PlayerRefreshSchedule#HOT_CHANGE_THRESHOLD} and the partial
+ * {@link xyz.mcutils.backend.common.PlayerRefreshSchedule#HOT_CHANGE_THRESHOLD} and the partial
  * index predicates in {@code V52__player_refresh_state.sql}.
  */
 @Repository

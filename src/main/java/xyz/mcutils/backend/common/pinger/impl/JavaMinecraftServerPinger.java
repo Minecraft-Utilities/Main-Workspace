@@ -1,4 +1,4 @@
-package xyz.mcutils.backend.service.pinger.impl;
+package xyz.mcutils.backend.common.pinger.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import xyz.mcutils.backend.Constants;
@@ -9,7 +9,7 @@ import xyz.mcutils.backend.exception.impl.BadRequestException;
 import xyz.mcutils.backend.model.domain.dns.DNSRecord;
 import xyz.mcutils.backend.model.domain.server.java.JavaMinecraftServer;
 import xyz.mcutils.backend.model.token.server.JavaServerStatusToken;
-import xyz.mcutils.backend.service.pinger.MinecraftServerPinger;
+import xyz.mcutils.backend.common.pinger.MinecraftServerPinger;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
