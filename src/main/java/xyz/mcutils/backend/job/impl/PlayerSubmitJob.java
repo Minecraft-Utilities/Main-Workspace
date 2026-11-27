@@ -1,6 +1,7 @@
 package xyz.mcutils.backend.job.impl;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
@@ -17,7 +18,7 @@ import xyz.mcutils.backend.job.JobTrigger;
 import xyz.mcutils.backend.metric.impl.player.PlayerSubmitProcessingMetric;
 import xyz.mcutils.backend.model.token.mojang.MojangProfileToken;
 import xyz.mcutils.backend.service.MetricService;
-import xyz.mcutils.backend.common.MojangRateLimiter;
+import xyz.mcutils.backend.common.AdaptiveRateLimiter;
 import xyz.mcutils.backend.service.MojangService;
 import xyz.mcutils.backend.service.PlayerService;
 import xyz.mcutils.backend.service.PlayerSubmitService;
@@ -48,12 +49,12 @@ public class PlayerSubmitJob implements Job {
     private static final int CONCURRENT_FETCHES = 40;
     private static final Duration EMPTY_QUEUE_BLOCK = Duration.ofSeconds(2);
 
-    private final MojangRateLimiter mojangRateLimiter;
+    private final AdaptiveRateLimiter mojangRateLimiter;
     private final RedisQueue submitQueue;
     private final PlayerService playerService;
     private final MojangService mojangService;
 
-    public PlayerSubmitJob(RedisQueueFactory queueFactory, @Lazy PlayerService playerService, @Lazy MojangService mojangService, MojangRateLimiter mojangRateLimiter) {
+    public PlayerSubmitJob(RedisQueueFactory queueFactory, @Lazy PlayerService playerService, @Lazy MojangService mojangService, @Qualifier("submitRateLimiter") AdaptiveRateLimiter mojangRateLimiter) {
         this.submitQueue = queueFactory.getQueue(PlayerSubmitService.QUEUE_NAME);
         this.playerService = playerService;
         this.mojangService = mojangService;
@@ -195,7 +196,7 @@ public class PlayerSubmitJob implements Job {
                 recordOutcome(PlayerSubmitProcessingMetric.Outcome.NOT_FOUND, processStart);
                 return new FetchResult(entry, null, PlayerSubmitProcessingMetric.Outcome.NOT_FOUND, processStart);
             }
-            mojangRateLimiter.onSuccess();
+            mojangRateLimiter.speedUp();
             recordOutcome(PlayerSubmitProcessingMetric.Outcome.CREATED, processStart);
             return new FetchResult(entry, token, PlayerSubmitProcessingMetric.Outcome.CREATED, processStart);
         } catch (NotFoundException e) {
@@ -203,7 +204,7 @@ public class PlayerSubmitJob implements Job {
             recordOutcome(PlayerSubmitProcessingMetric.Outcome.NOT_FOUND, processStart);
             return new FetchResult(entry, null, PlayerSubmitProcessingMetric.Outcome.NOT_FOUND, processStart);
         } catch (RateLimitException e) {
-            mojangRateLimiter.onRateLimited();
+            mojangRateLimiter.slowDown();
             // The HTTP layer throws the plain RateLimitException (not the never-thrown
             // MojangAPIRateLimitException subclass); without this catch the popped entry
             // was silently dropped: never requeued, and its dedupe key stayed in the set,

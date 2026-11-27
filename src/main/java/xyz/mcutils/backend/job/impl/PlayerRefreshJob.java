@@ -2,6 +2,7 @@ package xyz.mcutils.backend.job.impl;
 
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
@@ -16,7 +17,7 @@ import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.DuePlayer;
 import xyz.mcutils.backend.repository.postgres.PlayerRefreshRepository.ScheduleUpdate;
 import xyz.mcutils.backend.service.MetricService;
-import xyz.mcutils.backend.common.MojangRateLimiter;
+import xyz.mcutils.backend.common.AdaptiveRateLimiter;
 import xyz.mcutils.backend.service.MojangService;
 import xyz.mcutils.backend.service.PlayerService;
 
@@ -45,7 +46,7 @@ public class PlayerRefreshJob implements Job {
     private static final Duration CHUNK_TIMEOUT = Duration.ofMinutes(10);
     private final int refreshChunkSize;
     private final int concurrentFetches;
-    private final MojangRateLimiter mojangRateLimiter;
+    private final AdaptiveRateLimiter mojangRateLimiter;
     private final MojangService mojangService;
     private final PlayerService playerService;
     private final PlayerRefreshRepository playerRefreshRepository;
@@ -55,7 +56,7 @@ public class PlayerRefreshJob implements Job {
             MojangService mojangService,
             PlayerService playerService,
             PlayerRefreshRepository playerRefreshRepository,
-            MojangRateLimiter mojangRateLimiter,
+            @Qualifier("refreshRateLimiter") AdaptiveRateLimiter mojangRateLimiter,
             @Value("${mc-utils.player-refresh.chunk-size:2500}") int refreshChunkSize,
             @Value("${mc-utils.player-refresh.concurrent-fetches:200}") int concurrentFetches
     ) {
@@ -242,10 +243,10 @@ public class PlayerRefreshJob implements Job {
                 recordFailure(failureReasons, "null_profile");
                 return null;
             }
-            this.mojangRateLimiter.onSuccess();
+            this.mojangRateLimiter.speedUp();
             return new PlayerService.PlayerUpdate(playerRow, token);
         } catch (RateLimitException e) {
-            this.mojangRateLimiter.onRateLimited();
+            this.mojangRateLimiter.slowDown();
             failedIds.add(playerRow.id());
             recordFailure(failureReasons, "rate_limited");
             return null;

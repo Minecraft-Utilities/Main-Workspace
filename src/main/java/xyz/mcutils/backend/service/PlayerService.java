@@ -1,9 +1,10 @@
 package xyz.mcutils.backend.service;
 
 import xyz.mcutils.backend.common.PlayerRefreshSchedule;
-import xyz.mcutils.backend.common.MojangRateLimiter;
+import xyz.mcutils.backend.common.AdaptiveRateLimiter;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.PageRequest;
@@ -71,7 +72,7 @@ public class PlayerService {
 
     public static PlayerService INSTANCE;
     private final MojangService mojangService;
-    private final MojangRateLimiter mojangRateLimiter;
+    private final AdaptiveRateLimiter mojangRateLimiter;
     private final SkinService skinService;
     private final CapeService capeService;
     private final PlayerRepository playerRepository;
@@ -89,7 +90,7 @@ public class PlayerService {
     private final Set<UUID> refreshesInFlight = ConcurrentHashMap.newKeySet();
     private final CoalescingLoader<String, PlayerRow> playerLoader = new CoalescingLoader<>(Runnable::run);
 
-    public PlayerService(MojangService mojangService, MojangRateLimiter mojangRateLimiter, SkinService skinService, CapeService capeService,
+    public PlayerService(MojangService mojangService, @Qualifier("refreshRateLimiter") AdaptiveRateLimiter mojangRateLimiter, SkinService skinService, CapeService capeService,
                          PlayerRepository playerRepository, UsernameChangeEventRepository usernameChangeEventRepository,
                          PlayerSkinAdoptionRepository playerSkinAdoptionRepository, PlayerCapeAdoptionRepository playerCapeAdoptionRepository,
                          PlayerRefreshRepository playerRefreshRepository, PlayerRefreshStateRepository playerRefreshStateRepository,
@@ -154,14 +155,14 @@ public class PlayerService {
                     try {
                         this.mojangRateLimiter.acquire();
                         MojangProfileToken token = this.mojangService.getProfile(playerRow.getId().toString());
-                        this.mojangRateLimiter.onSuccess();
+                        this.mojangRateLimiter.speedUp();
                         if (token == null) {
                             this.bumpRefreshFailure(playerRow.getId());
                             return;
                         }
                         this.self.updatePlayer(playerRow, refreshState, token);
                     } catch (RateLimitException e) {
-                        this.mojangRateLimiter.onRateLimited();
+                        this.mojangRateLimiter.slowDown();
                         this.bumpRefreshFailure(playerRow.getId());
                     } catch (Exception e) {
                         this.bumpRefreshFailure(playerRow.getId());

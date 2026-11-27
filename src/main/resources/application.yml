@@ -178,6 +178,10 @@ mc-utils:
     mojang-rate-limit: 120
     concurrent-persists: 64
 
+  # Drains the player submit queue. Has its own Mojang rate limit, separate from player-refresh.
+  player-submit:
+    mojang-rate-limit: 120
+
   # Bulk lookup of released usernames to discover players that are not tracked yet.
   previous-username:
     max-requests-per-second: 50
