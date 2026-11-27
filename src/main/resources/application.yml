@@ -145,6 +145,8 @@ mc-utils:
   maxmind:
     # Leave blank to disable lookups
     license: ""
+    # Directory the MaxMind databases are downloaded to
+    database-dir: databases
 
   # The Bearer token used for authenticating the "/metrics" route.
   # Leave blank to disable auth.
@@ -164,6 +166,10 @@ mc-utils:
     session-server-url: https://sessionserver.mojang.com
     api-url: https://api.mojang.com
     textures-url: https://textures.minecraft.net
+
+  # Geyser API, used for Bedrock player lookups
+  geyser:
+    api-url: https://api.geysermc.org
 
   # Background player refresh (Mojang session server profile lookups).
   player-refresh:
