@@ -41,7 +41,7 @@ public class NameSweepJob implements JobProvider {
     public NameSweepJob(
             NameSweepRepository nameSweepRepository,
             NameResolveService nameResolveService,
-            @Value("${mc-utils.name-sweep.lengths:4,5}") List<Integer> lengths,
+            @Value("${mc-utils.name-sweep.lengths:5}") List<Integer> lengths,
             @Value("${mc-utils.name-sweep.initial-requests-per-second:50}") double initialRequestsPerSecond,
             @Value("${mc-utils.name-sweep.continuous-requests-per-second:10}") double continuousRequestsPerSecond
     ) {

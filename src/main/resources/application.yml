@@ -185,7 +185,7 @@ mc-utils:
   # Enumerates every username of the given lengths to discover players that are not tracked yet.
   # Each length does one pass at the initial rate, then keeps sweeping at the continuous rate.
   name-sweep:
-    lengths: 4,5
+    lengths: 5
     initial-requests-per-second: 50
     continuous-requests-per-second: 10
     # Lengths too long to enumerate, swept most-likely-name first using a model of the tracked names.
@@ -193,7 +193,7 @@ mc-utils:
       lengths: 6,7,8,9
       candidates-per-length: 1000000000
       # Shared by every model length, unlike the per-length enumeration rates above.
-      requests-per-second: 150
+      requests-per-second: 160
 
   # Background jobs. Every job runs unless switched off here by name.
   jobs:
@@ -205,9 +205,7 @@ mc-utils:
       enabled: true
     previous-username-resolve:
       enabled: true
-    # One job per length in mc-utils.name-sweep.lengths: name-sweep-4, name-sweep-5, ...
-    name-sweep-4:
-      enabled: true
+    # One job per length in mc-utils.name-sweep.lengths: name-sweep-5, ...
     name-sweep-5:
       enabled: true
     maxmind-update:
