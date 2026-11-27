@@ -1,146 +1,86 @@
 package xyz.mcutils.backend.common.redis;
 
-import org.springframework.data.redis.connection.RedisConnection;
-import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.SetOperations;
-import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Redis-backed FIFO queue using a list, with an optional companion set for O(1) deduplication.
+ * Redis-backed FIFO queue using a list, with a companion set ({@code queueName + "-ids"}) that rejects
+ * items whose dedupe key is already queued or in flight.
  * <p>
- * List key: {@code queueName}; dedupe set key: {@code queueName + "-ids"} when deduplication is enabled.
+ * Producers and consumers use separate templates: a blocking pop occupies its connection until it returns, so
+ * enqueues and size checks must never share one with it.
  */
 public final class RedisQueue {
 
-    private final RedisTemplate<String, String> redis;
+    /**
+     * Without an expiry, an item that is popped but never completed would block its dedupe key forever.
+     */
+    private static final Duration DEDUPE_TTL = Duration.ofHours(24);
+
+    // SADD decides per item, so two concurrent enqueues of one key cannot both push it.
+    private static final RedisScript<Long> ENQUEUE_SCRIPT = new DefaultRedisScript<>("""
+            local added = 0
+            for i = 2, #ARGV, 2 do
+                if redis.call('SADD', KEYS[2], ARGV[i + 1]) == 1 then
+                    redis.call('RPUSH', KEYS[1], ARGV[i])
+                    added = added + 1
+                end
+            end
+            redis.call('EXPIRE', KEYS[2], ARGV[1])
+            return added
+            """, Long.class);
+
+    private final RedisTemplate<String, String> producer;
+    private final RedisTemplate<String, String> consumer;
     private final String listKey;
     private final String dedupeSetKey;
-    private final boolean deduplicationEnabled;
 
-    public RedisQueue(RedisTemplate<String, String> redis, String queueName) {
-        this(redis, queueName, queueName + "-ids", true);
-    }
-
-    public RedisQueue(RedisTemplate<String, String> redis, String listKey, String dedupeSetKey, boolean deduplicationEnabled) {
-        this.redis = Objects.requireNonNull(redis, "redis");
-        this.listKey = Objects.requireNonNull(listKey, "listKey");
-        this.dedupeSetKey = dedupeSetKey;
-        this.deduplicationEnabled = deduplicationEnabled && dedupeSetKey != null;
-    }
-
-    public String listKey() {
-        return listKey;
-    }
-
-    public String dedupeSetKey() {
-        return dedupeSetKey;
-    }
-
-    public boolean deduplicationEnabled() {
-        return deduplicationEnabled;
+    public RedisQueue(RedisTemplate<String, String> producer, RedisTemplate<String, String> consumer, String queueName) {
+        this.producer = Objects.requireNonNull(producer, "producer");
+        this.consumer = Objects.requireNonNull(consumer, "consumer");
+        this.listKey = Objects.requireNonNull(queueName, "queueName");
+        this.dedupeSetKey = queueName + "-ids";
     }
 
     /**
-     * Enqueues items whose dedupe keys are not already in the companion set.
+     * Atomically enqueues the items whose dedupe keys are not already queued or in flight.
      */
     public EnqueueResult enqueue(List<QueueItem> items) {
         if (items == null || items.isEmpty()) {
             return EnqueueResult.EMPTY;
         }
-        List<String> payloads = new ArrayList<>();
-        List<String> dedupeKeys = new ArrayList<>();
-        int alreadyQueued = 0;
-
-        if (deduplicationEnabled) {
-            List<Boolean> present = areDedupeKeysPresent(items.stream().map(QueueItem::dedupeKey).toList());
-            for (int i = 0; i < items.size(); i++) {
-                if (Boolean.TRUE.equals(present.get(i))) {
-                    alreadyQueued++;
-                } else {
-                    QueueItem item = items.get(i);
-                    payloads.add(item.payload());
-                    dedupeKeys.add(item.dedupeKey());
-                }
-            }
-        } else {
-            for (QueueItem item : items) {
-                payloads.add(item.payload());
-            }
+        String[] args = new String[1 + items.size() * 2];
+        args[0] = String.valueOf(DEDUPE_TTL.toSeconds());
+        for (int i = 0; i < items.size(); i++) {
+            args[1 + i * 2] = items.get(i).payload();
+            args[2 + i * 2] = items.get(i).dedupeKey();
         }
-
-        if (payloads.isEmpty()) {
-            return new EnqueueResult(0, alreadyQueued);
-        }
-
-        ListOperations<String, String> listOps = redis.opsForList();
-        listOps.rightPushAll(listKey, payloads);
-        if (deduplicationEnabled) {
-            redis.opsForSet().add(dedupeSetKey, dedupeKeys.toArray(new String[0]));
-        }
-        return new EnqueueResult(payloads.size(), alreadyQueued);
+        Long added = producer.execute(ENQUEUE_SCRIPT, List.of(listKey, dedupeSetKey), (Object[]) args);
+        int enqueued = added == null ? 0 : added.intValue();
+        return new EnqueueResult(enqueued, items.size() - enqueued);
     }
 
-    public void enqueueUnchecked(Collection<String> payloads) {
-        if (payloads == null || payloads.isEmpty()) {
-            return;
-        }
-        redis.opsForList().rightPushAll(listKey, payloads.toArray(new String[0]));
-    }
-
+    /**
+     * Pushes popped items back without touching the dedupe set: an in-flight item keeps its key until it is
+     * completed through {@link #removeDedupeKeys}.
+     */
     public void requeue(Collection<String> payloads) {
         if (payloads == null || payloads.isEmpty()) {
             return;
         }
-        redis.opsForList().rightPushAll(listKey, payloads.toArray(new String[0]));
-    }
-
-    public void requeue(String payload) {
-        if (payload != null && !payload.isBlank()) {
-            redis.opsForList().rightPush(listKey, payload);
-        }
-    }
-
-    public List<Boolean> areDedupeKeysPresent(List<String> dedupeKeys) {
-        if (!deduplicationEnabled || dedupeKeys == null || dedupeKeys.isEmpty()) {
-            return List.of();
-        }
-        @SuppressWarnings("unchecked")
-        RedisSerializer<String> keySer = (RedisSerializer<String>) redis.getKeySerializer();
-        @SuppressWarnings("unchecked")
-        RedisSerializer<String> valueSer = (RedisSerializer<String>) redis.getValueSerializer();
-        byte[] keyBytes = keySer.serialize(dedupeSetKey);
-        byte[][] memberBytes = new byte[dedupeKeys.size()][];
-        for (int i = 0; i < dedupeKeys.size(); i++) {
-            memberBytes[i] = valueSer.serialize(dedupeKeys.get(i));
-        }
-        List<Boolean> result = redis.execute((RedisConnection connection) ->
-                connection.setCommands().sMIsMember(keyBytes, memberBytes));
-        return result != null ? result : List.of();
+        producer.opsForList().rightPushAll(listKey, payloads.toArray(new String[0]));
     }
 
     public void removeDedupeKeys(Collection<String> dedupeKeys) {
-        if (!deduplicationEnabled || dedupeKeys == null || dedupeKeys.isEmpty()) {
+        if (dedupeKeys == null || dedupeKeys.isEmpty()) {
             return;
         }
-        redis.opsForSet().remove(dedupeSetKey, dedupeKeys.toArray());
-    }
-
-    public Optional<String> blockingPopFirst(Duration timeout) {
-        String value = redis.opsForList().leftPop(listKey, timeout.toSeconds(), TimeUnit.SECONDS);
-        return Optional.ofNullable(value);
-    }
-
-    public List<String> popUpTo(int count) {
-        if (count <= 0) {
-            return List.of();
-        }
-        List<String> result = redis.opsForList().leftPop(listKey, count);
-        return result != null ? result : List.of();
+        producer.opsForSet().remove(dedupeSetKey, dedupeKeys.toArray());
     }
 
     /**
@@ -150,27 +90,24 @@ public final class RedisQueue {
         if (batchSize <= 0) {
             return Optional.empty();
         }
-        return blockingPopFirst(emptyTimeout).map(first -> {
-            List<String> batch = new ArrayList<>(batchSize);
-            batch.add(first);
-            if (batchSize > 1) {
-                batch.addAll(popUpTo(batchSize - 1));
+        String first = consumer.opsForList().leftPop(listKey, emptyTimeout.toSeconds(), TimeUnit.SECONDS);
+        if (first == null) {
+            return Optional.empty();
+        }
+        List<String> batch = new ArrayList<>(batchSize);
+        batch.add(first);
+        if (batchSize > 1) {
+            List<String> rest = producer.opsForList().leftPop(listKey, batchSize - 1);
+            if (rest != null) {
+                batch.addAll(rest);
             }
-            return batch;
-        });
+        }
+        return Optional.of(batch);
     }
 
     public long size() {
-        Long size = redis.opsForList().size(listKey);
+        Long size = producer.opsForList().size(listKey);
         return size != null ? size : 0L;
-    }
-
-    public ListOperations<String, String> listOps() {
-        return redis.opsForList();
-    }
-
-    public SetOperations<String, String> setOps() {
-        return redis.opsForSet();
     }
 
     public record QueueItem(String payload, String dedupeKey) {

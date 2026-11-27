@@ -110,13 +110,31 @@ public class PlayerSubmitJob implements Job {
         return entries.stream().filter(e -> !existingIds.contains(e.playerId())).toList();
     }
 
+    /**
+     * Fetches and stores the entries. Anything popped from the queue that is not settled when this returns, whether
+     * by shutdown or a failure, goes back on the queue with its dedupe key intact.
+     */
     private Map<UUID, Long> processEntries(List<QueueEntry> toProcess, JobContext context) {
+        Set<UUID> settled = new HashSet<>();
+        try {
+            return fetchAndStore(toProcess, context, settled);
+        } finally {
+            List<String> unsettled = toProcess.stream()
+                    .filter(entry -> !settled.contains(entry.playerId()))
+                    .map(QueueEntry::toRedisValue)
+                    .toList();
+            if (!unsettled.isEmpty()) {
+                submitQueue.requeue(unsettled);
+            }
+        }
+    }
+
+    private Map<UUID, Long> fetchAndStore(List<QueueEntry> toProcess, JobContext context, Set<UUID> settled) {
         Queue<FetchResult> fetchResults = new ConcurrentLinkedQueue<>();
         Set<String> idsToRemoveFromQueue = new HashSet<>();
         Map<UUID, Long> submitterCounts = new HashMap<>();
         List<MojangProfileToken> tokensToSave = new ArrayList<>();
         List<FetchResult> successResults = new ArrayList<>();
-        List<String> toRequeue = new ArrayList<>();
 
         for (int offset = 0; offset < toProcess.size(); offset += CONCURRENT_FETCHES) {
             if (!context.isRunning()) {
@@ -135,10 +153,11 @@ public class PlayerSubmitJob implements Job {
             FutureUtils.awaitAll(futures, "submit");
         }
 
+        Set<UUID> retryable = new HashSet<>();
         for (FetchResult result : fetchResults) {
             if (result.outcome() == PlayerSubmitProcessingMetric.Outcome.RATE_LIMITED
                     || result.outcome() == PlayerSubmitProcessingMetric.Outcome.TIMED_OUT) {
-                toRequeue.add(result.entry().toRedisValue());
+                retryable.add(result.entry().playerId());
             } else {
                 idsToRemoveFromQueue.add(result.entry().playerId().toString());
                 if (result.token() != null) {
@@ -146,10 +165,6 @@ public class PlayerSubmitJob implements Job {
                     successResults.add(result);
                 }
             }
-        }
-
-        if (!toRequeue.isEmpty()) {
-            submitQueue.requeue(toRequeue);
         }
 
         if (!tokensToSave.isEmpty()) {
@@ -161,6 +176,12 @@ public class PlayerSubmitJob implements Job {
             }
         }
 
+        // Retryable entries stay unsettled so the caller requeues them with everything that was never fetched.
+        for (FetchResult result : fetchResults) {
+            if (!retryable.contains(result.entry().playerId())) {
+                settled.add(result.entry().playerId());
+            }
+        }
         submitQueue.removeDedupeKeys(idsToRemoveFromQueue);
         return submitterCounts;
     }

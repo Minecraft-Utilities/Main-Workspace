@@ -30,7 +30,7 @@ public class ServerPreviewRenderer extends Renderer<MinecraftServer> {
 
     private static final int SCALE = 3;
     private static final int PADDING = 5;
-    private static final int ROW_WIDTH = (305 * SCALE) + (PADDING * 2);
+    public static final int ROW_WIDTH = (305 * SCALE) + (PADDING * 2);
     private static final int ROW_HEIGHT = (32 * SCALE) + (PADDING * 2);
     private static final int ICON_SIZE = 32 * SCALE;
     private static final int ICON_TEXT_GAP = 3 * SCALE;
@@ -59,6 +59,30 @@ public class ServerPreviewRenderer extends Renderer<MinecraftServer> {
 
     @Override
     public BufferedImage render(MinecraftServer server, int size, RenderOptions options) {
+        return resize(renderCanonical(server), size);
+    }
+
+    /**
+     * Scales a canonical preview to the requested width.
+     *
+     * @param canonical the image from {@link #renderCanonical(MinecraftServer)}
+     * @param size      the target width in pixels
+     * @return the scaled image, the canonical one when the width already matches
+     */
+    public static BufferedImage resize(BufferedImage canonical, int size) {
+        if (size == canonical.getWidth()) {
+            return canonical;
+        }
+        return ImageUtils.resize(ImageUtils.toIntArgb(canonical), (double) size / canonical.getWidth());
+    }
+
+    /**
+     * Draws the preview at its native {@value #ROW_WIDTH}px width, independent of any requested size.
+     *
+     * @param server the server to draw
+     * @return the canonical preview
+     */
+    public BufferedImage renderCanonical(MinecraftServer server) {
         BufferedImage texture = new BufferedImage(ROW_WIDTH, ROW_HEIGHT, BufferedImage.TYPE_INT_ARGB);
         BufferedImage favicon = getServerFavicon(server);
 
@@ -115,7 +139,7 @@ public class ServerPreviewRenderer extends Renderer<MinecraftServer> {
         GraphicsUtils.drawStringWithStyle(graphics, Fonts.MINECRAFT, playersMax, statusTextX, statusTextY, true, false, false, false, false, SCALE);
 
         graphics.dispose();
-        return ImageUtils.resize(texture, (double) size / ROW_WIDTH);
+        return texture;
     }
 
     private void drawMotdLine(Graphics2D graphics, String line, int x, int y) {

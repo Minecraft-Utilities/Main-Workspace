@@ -24,9 +24,11 @@ import xyz.mcutils.backend.service.StorageService;
 import java.awt.image.BufferedImage;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Future;
 
@@ -80,35 +82,56 @@ public class LegacySkinCheckJob implements Job {
         if (batch.isEmpty()) {
             return JobResult.IDLE;
         }
-        processBatch(batch.get());
+        processBatch(batch.get(), context);
         return JobResult.WORKED;
     }
 
-    private void processBatch(List<String> textureIds) {
+    /**
+     * Checks the batch. Anything popped that is not settled when this returns, whether by shutdown or a failure,
+     * goes back on the queue with its dedupe key intact.
+     */
+    private void processBatch(List<String> batch, JobContext context) {
+        List<String> textureIds = batch.stream()
+                .filter(id -> id != null && !id.isBlank())
+                .map(String::trim)
+                .toList();
+        Set<String> settled = new HashSet<>();
+        try {
+            checkBatch(textureIds, context, settled);
+        } finally {
+            List<String> unsettled = textureIds.stream().filter(id -> !settled.contains(id)).toList();
+            if (!unsettled.isEmpty()) {
+                checkQueue.requeue(unsettled);
+            }
+        }
+    }
+
+    private void checkBatch(List<String> textureIds, JobContext context, Set<String> settled) {
         Queue<CheckResult> results = new ConcurrentLinkedQueue<>();
         List<Future<Void>> futures = new ArrayList<>();
 
         for (String textureId : textureIds) {
-            if (textureId == null || textureId.isBlank()) {
-                continue;
+            if (!context.isRunning()) {
+                break;
             }
             rateLimiter.acquire();
             futures.add(Main.EXECUTOR.submit(() -> {
-                results.add(checkLegacy(textureId.trim()));
+                results.add(checkLegacy(textureId));
                 return null;
             }));
         }
 
         FutureUtils.awaitAll(futures, "legacy-skin-check");
 
-        List<String> toRequeue = new ArrayList<>();
         List<String> completed = new ArrayList<>();
         List<String> legacyIds = new ArrayList<>();
         List<String> modernIds = new ArrayList<>();
 
         for (CheckResult result : results) {
             switch (result.outcome()) {
-                case RETRY -> toRequeue.add(result.textureId());
+                case RETRY -> {
+                    // Not completed: it stays unsettled so processBatch requeues it.
+                }
                 case DROP -> completed.add(result.textureId());
                 case SUCCESS -> {
                     (result.legacy() ? legacyIds : modernIds).add(result.textureId());
@@ -123,9 +146,7 @@ public class LegacySkinCheckJob implements Job {
             skinRepository.updateLegacyByTextureIds(modernIds, false);
         }
 
-        if (!toRequeue.isEmpty()) {
-            checkQueue.requeue(toRequeue);
-        }
+        settled.addAll(completed);
         if (!completed.isEmpty()) {
             checkQueue.removeDedupeKeys(completed);
         }

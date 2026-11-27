@@ -50,7 +50,7 @@ public class LegacySkinCheckService {
             return 0;
         }
         RedisQueue.EnqueueResult result = checkQueue.enqueue(items);
-        if (result.enqueued() > 0) {
+        if (result.enqueued() > 0 && log.isDebugEnabled()) {
             log.debug("Enqueued {} skins for legacy check (queue size: {})", result.enqueued(), checkQueue.size());
         }
         return result.enqueued();

@@ -10,6 +10,8 @@ import xyz.mcutils.backend.Main;
 import xyz.mcutils.backend.common.CoalescingLoader;
 import xyz.mcutils.backend.common.EnumUtils;
 import xyz.mcutils.backend.common.ImageUtils;
+import xyz.mcutils.backend.common.redis.RedisBlobCache;
+import xyz.mcutils.backend.common.redis.ServerCacheKeys;
 import xyz.mcutils.backend.common.renderer.impl.server.ServerPreviewRenderer;
 import xyz.mcutils.backend.exception.impl.BadRequestException;
 import xyz.mcutils.backend.exception.impl.NotFoundException;
@@ -23,29 +25,31 @@ import xyz.mcutils.backend.model.domain.server.MinecraftServer;
 import xyz.mcutils.backend.model.domain.server.Platform;
 import xyz.mcutils.backend.model.domain.server.java.JavaMinecraftServer;
 import xyz.mcutils.backend.model.persistence.redis.CachedMinecraftServer;
-import xyz.mcutils.backend.model.persistence.redis.CachedServerPreview;
 import xyz.mcutils.backend.repository.redis.MinecraftServerCacheRepository;
-import xyz.mcutils.backend.repository.redis.ServerPreviewCacheRepository;
 
+import java.awt.image.BufferedImage;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
 public class ServerService {
     public static final String DEFAULT_SERVER_ICON = "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";
+    private static final Duration PREVIEW_TTL = Duration.ofHours(6);
     private static final InetAddressValidator IP_VALIDATOR = InetAddressValidator.getInstance();
     private final MojangService mojangService;
     private final MaxMindService maxMindService;
     private final DNSService dnsService;
     private final ServerRegistryService serverRegistryService;
     private final MinecraftServerCacheRepository serverCacheRepository;
-    private final ServerPreviewCacheRepository serverPreviewCacheRepository;
+    private final RedisBlobCache previewCache;
     private final CoalescingLoader<String, CachedMinecraftServer> serverLoader = new CoalescingLoader<>(Main.EXECUTOR);
     private final CoalescingLoader<String, byte[]> previewLoader = new CoalescingLoader<>(Main.EXECUTOR);
     @Value("${mc-utils.cache.servers.enabled}")
@@ -66,13 +70,13 @@ public class ServerService {
     private List<String> blacklistedSubnetCidrs;
     private List<Subnet> blacklistedSubnets;
 
-    public ServerService(MojangService mojangService, MaxMindService maxMindService, DNSService dnsService, ServerRegistryService serverRegistryService, MinecraftServerCacheRepository serverCacheRepository, ServerPreviewCacheRepository serverPreviewCacheRepository) {
+    public ServerService(MojangService mojangService, MaxMindService maxMindService, DNSService dnsService, ServerRegistryService serverRegistryService, MinecraftServerCacheRepository serverCacheRepository, RedisBlobCache previewCache) {
         this.mojangService = mojangService;
         this.maxMindService = maxMindService;
         this.dnsService = dnsService;
         this.serverRegistryService = serverRegistryService;
         this.serverCacheRepository = serverCacheRepository;
-        this.serverPreviewCacheRepository = serverPreviewCacheRepository;
+        this.previewCache = previewCache;
     }
 
     @PostConstruct
@@ -112,16 +116,15 @@ public class ServerService {
                 throw new BadRequestException("Invalid port: '%s'".formatted(port));
             }
         }
-        String key = "%s-%s-%s".formatted(platformName, hostname, port);
+        String key = ServerCacheKeys.server(platform, hostname, port);
         log.debug("Getting server: {}:{}", hostname, port);
 
         long cacheStart = System.currentTimeMillis();
         if (cacheEnabled) {
-            Optional<CachedMinecraftServer> cached = serverCacheRepository.findById(key);
+            Optional<CachedMinecraftServer> cached = serverCacheRepository.find(platform, hostname, port);
             if (cached.isPresent()) {
                 CachedMinecraftServer server = cached.get();
                 log.debug("Got server {}:{} from cache in {}ms", hostname, port, System.currentTimeMillis() - cacheStart);
-                server.setCached(true);
                 MetricService.getMetric(ServerLookupMetric.class).recordHit();
                 return server;
             }
@@ -130,10 +133,12 @@ public class ServerService {
         String resolvedHostname = hostname;
         int resolvedPort = port;
         // A popular server can miss the cache in bursts, so one ping serves every caller waiting on this key.
-        return serverLoader.get(key, () -> this.loadServer(key, platform, resolvedHostname, resolvedPort));
+        return serverLoader.get(key, () -> this.loadServer(platform, resolvedHostname, resolvedPort));
     }
 
-    private CachedMinecraftServer loadServer(String key, Platform platform, String hostname, int port) {
+    private CachedMinecraftServer loadServer(Platform platform, String hostname, int port) {
+        String requestedHostname = hostname;
+        int requestedPort = port;
         List<DNSRecord> dnsRecords = new ArrayList<>();
 
         SRVRecord srvRecord = platform == Platform.JAVA ? dnsService.resolveSRV(hostname) : null; // Resolve the SRV record
@@ -160,7 +165,7 @@ public class ServerService {
         }
 
         long pingStart = System.currentTimeMillis();
-        CachedMinecraftServer cachedServer = new CachedMinecraftServer(key, platform.getPinger().ping(hostname, ip, port, dnsRecords.toArray(new DNSRecord[0]), platform == Platform.JAVA ? javaPingerTimeout : bedrockPingerTimeout));
+        CachedMinecraftServer cachedServer = new CachedMinecraftServer(platform.getPinger().ping(hostname, ip, port, dnsRecords.toArray(new DNSRecord[0]), platform == Platform.JAVA ? javaPingerTimeout : bedrockPingerTimeout));
         long pingDurationMs = System.currentTimeMillis() - pingStart;
         log.debug("Successfully pinged server: {}:{} in {}ms", hostname, port, pingDurationMs);
         MetricService.getMetric(ServerLookupMetric.class).recordMiss(pingDurationMs);
@@ -177,9 +182,8 @@ public class ServerService {
         }
 
         if (cacheEnabled) {
-            String finalHostname = hostname;
-            CompletableFuture.runAsync(() -> this.serverCacheRepository.save(cachedServer), Main.EXECUTOR).exceptionally(ex -> {
-                log.warn("Save failed for server {}: {}", finalHostname, ex.getMessage());
+            CompletableFuture.runAsync(() -> this.serverCacheRepository.save(platform, requestedHostname, requestedPort, cachedServer.getServer()), Main.EXECUTOR).exceptionally(ex -> {
+                log.warn("Save failed for server {}: {}", requestedHostname, ex.getMessage());
                 return null;
             });
         }
@@ -227,27 +231,39 @@ public class ServerService {
 
         MinecraftServer server = cachedServer.getServer();
         log.debug("Getting preview for server: {}:{} (size {})", server.getHostname(), server.getPort(), size);
-        String key = "%s-%s-%s-%s".formatted(platform, server.getHostname(), server.getPort(), size);
+        String key = ServerCacheKeys.preview(EnumUtils.getEnumConstant(Platform.class, platform.toUpperCase(Locale.ROOT)), server.getHostname(), server.getPort());
 
+        byte[] canonical = getCanonicalPreview(key, server);
+        if (size == ServerPreviewRenderer.ROW_WIDTH) {
+            return canonical;
+        }
+        BufferedImage resized = ServerPreviewRenderer.resize(ImageUtils.decodeImage(canonical), size);
+        return ImageUtils.imageToBytes(resized);
+    }
+
+    /**
+     * Gets the preview at its native size. The artwork does not depend on the requested size, so one stored image
+     * serves every size.
+     */
+    private byte[] getCanonicalPreview(String key, MinecraftServer server) {
         long cacheStart = System.currentTimeMillis();
         if (previewCacheEnabled) {
-            Optional<CachedServerPreview> cached = serverPreviewCacheRepository.findById(key);
+            Optional<byte[]> cached = previewCache.get(key);
             if (cached.isPresent()) {
                 log.debug("Got server preview {}:{} from cache in {}ms", server.getHostname(), server.getPort(), System.currentTimeMillis() - cacheStart);
-                return cached.get().getBytes();
+                return cached.get();
             }
         }
 
         // Rendering is CPU-bound, so a burst of requests for one preview must share a single render.
         return previewLoader.get(key, () -> {
             long renderStart = System.currentTimeMillis();
-            byte[] preview = ImageUtils.imageToBytes(ServerPreviewRenderer.INSTANCE.render(server, size));
+            byte[] preview = ImageUtils.imageToBytes(ServerPreviewRenderer.INSTANCE.renderCanonical(server));
             log.debug("Took {}ms to render preview for server: {}:{}", System.currentTimeMillis() - renderStart, server.getHostname(), server.getPort());
 
             // don't save to cache in development
             if (previewCacheEnabled) {
-                CachedServerPreview serverPreview = new CachedServerPreview(key, preview);
-                CompletableFuture.runAsync(() -> serverPreviewCacheRepository.save(serverPreview), Main.EXECUTOR).exceptionally(ex -> {
+                CompletableFuture.runAsync(() -> previewCache.set(key, preview, PREVIEW_TTL), Main.EXECUTOR).exceptionally(ex -> {
                     log.warn("Save failed for server preview {}: {}", key, ex.getMessage());
                     return null;
                 });

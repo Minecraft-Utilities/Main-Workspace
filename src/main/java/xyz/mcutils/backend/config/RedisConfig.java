@@ -1,15 +1,16 @@
 package xyz.mcutils.backend.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.repository.configuration.EnableRedisRepositories;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
@@ -20,8 +21,11 @@ import java.time.Duration;
  */
 @Configuration
 @Slf4j
-@EnableRedisRepositories(basePackages = "xyz.mcutils.backend.repository")
 public class RedisConfig {
+
+    public static final String QUEUE_CONSUMER_FACTORY = "queueConsumerConnectionFactory";
+    public static final String QUEUE_CONSUMER_TEMPLATE = "queueConsumerRedisTemplate";
+    public static final String QUEUE_PRODUCER_TEMPLATE = "queueProducerRedisTemplate";
 
     @Value("${mc-utils.redis.host}")
     private String host;
@@ -38,59 +42,54 @@ public class RedisConfig {
     @Value("${mc-utils.redis.command-timeout-seconds:120}")
     private int commandTimeoutSeconds;
 
-    @Bean
-    public RedisTemplate<String, Object> redisTemplate() {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(lettuceConnectionFactory());
-
-        RedisSerializer<Object> serializer = RedisSerializer.json();
-        template.setDefaultSerializer(serializer);
-        template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(serializer);
-        template.setHashKeySerializer(new StringRedisSerializer());
-        template.setHashValueSerializer(serializer);
-
-        return template;
-    }
-
-    @Bean(name = "queueRedisTemplate")
-    public RedisTemplate<String, String> queueRedisTemplate() {
-        RedisTemplate<String, String> template = new RedisTemplate<>();
-        template.setConnectionFactory(queueLettuceConnectionFactory());
-        template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(new StringRedisSerializer());
-        template.afterPropertiesSet();
-        return template;
-    }
-
     /**
-     * Dedicated connection for the blocking queue consumers (BLPOP) so they can never
-     * stall cache/repository traffic sharing the main connection (Lettuce processes
-     * commands per connection in order; a pending BLPOP would block everything behind it).
+     * The connection for caches and queue producers. Lettuce multiplexes every command onto one connection, so
+     * nothing that blocks may run here.
      */
-    @Bean
-    public LettuceConnectionFactory queueLettuceConnectionFactory() {
-        log.info("Connecting queue Redis at {}:{}/{} with dedicated Lettuce connection", host, port, database);
-
-        RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(host, port);
-        config.setDatabase(database);
-
-        if (!auth.trim().isEmpty()) {
-            config.setPassword(auth);
-        }
-
-        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                .commandTimeout(Duration.ofSeconds(commandTimeoutSeconds))
-                .shutdownTimeout(Duration.ofMillis(100))
-                .build();
-
-        return new LettuceConnectionFactory(config, clientConfig);
-    }
-
     @Bean
     @Primary
     public LettuceConnectionFactory lettuceConnectionFactory() {
-        log.info("Connecting to Redis at {}:{}/{} with Lettuce", host, port, database);
+        return buildConnectionFactory(true);
+    }
+
+    /**
+     * Connection factory for blocking queue consumers (BLPOP). Each call gets its own connection, so a consumer
+     * waiting on an empty queue can neither stall producers nor another consumer.
+     */
+    @Bean(name = QUEUE_CONSUMER_FACTORY)
+    public LettuceConnectionFactory queueConsumerConnectionFactory() {
+        return buildConnectionFactory(false);
+    }
+
+    @Bean(name = "blobRedisTemplate")
+    public RedisTemplate<String, byte[]> blobRedisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, byte[]> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(RedisSerializer.byteArray());
+        return template;
+    }
+
+    @Bean(name = QUEUE_PRODUCER_TEMPLATE)
+    public RedisTemplate<String, String> queueProducerRedisTemplate(RedisConnectionFactory connectionFactory) {
+        return stringTemplate(connectionFactory);
+    }
+
+    @Bean(name = QUEUE_CONSUMER_TEMPLATE)
+    public RedisTemplate<String, String> queueConsumerRedisTemplate(@Qualifier(QUEUE_CONSUMER_FACTORY) RedisConnectionFactory connectionFactory) {
+        return stringTemplate(connectionFactory);
+    }
+
+    private static RedisTemplate<String, String> stringTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, String> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new StringRedisSerializer());
+        return template;
+    }
+
+    private LettuceConnectionFactory buildConnectionFactory(boolean shareNativeConnection) {
+        log.info("Connecting to Redis at {}:{}/{} with Lettuce (shared connection: {})", host, port, database, shareNativeConnection);
 
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(host, port);
         config.setDatabase(database);
@@ -104,6 +103,8 @@ public class RedisConfig {
                 .shutdownTimeout(Duration.ofMillis(100))
                 .build();
 
-        return new LettuceConnectionFactory(config, clientConfig);
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(config, clientConfig);
+        factory.setShareNativeConnection(shareNativeConnection);
+        return factory;
     }
 }
