@@ -17,18 +17,19 @@ class NameModelTest {
     private static final String LETTERS = "abcdefghijklmnopqrstuvwxyz";
 
     private static NameModel trained(int length, int samples) {
+        return trained(length, samples, false);
+    }
+
+    private static NameModel trained(int length, int samples, boolean fifthOrder) {
         Random random = new Random(7);
-        NameModel.Trainer trainer = new NameModel.Trainer(length);
+        NameModel.Trainer trainer = new NameModel.Trainer(length, fifthOrder);
         for (int i = 0; i < samples; i++) {
             StringBuilder name = new StringBuilder();
             for (int j = 0; j < length; j++) {
                 String vowels = "aeiou";
                 name.append(j % 2 == 0 ? LETTERS.charAt(random.nextInt(LETTERS.length())) : vowels.charAt(random.nextInt(vowels.length())));
             }
-            String padded = "^^^" + name;
-            for (int j = 0; j < length; j++) {
-                trainer.add(padded.substring(j, j + 3), padded.charAt(j + 3), 1);
-            }
+            trainer.add(name.toString());
         }
         return trainer.build();
     }
@@ -63,6 +64,26 @@ class NameModelTest {
     }
 
     @Test
+    void fifthOrderModelListsEveryNameOnceInCostOrder() {
+        NameModel model = trained(4, 20_000, true);
+        List<String> names = drain(model, 1000);
+
+        assertEquals(1_874_161, names.size());
+        assertEquals(1_874_161, new HashSet<>(names).size());
+        for (int i = 1; i < names.size(); i++) {
+            assertTrue(model.costOf(names.get(i - 1)) <= model.costOf(names.get(i)), names.get(i - 1) + " before " + names.get(i));
+        }
+    }
+
+    @Test
+    void fifthOrderModelSurvivesSerialisation() {
+        NameModel model = trained(5, 20_000, true);
+        NameModel restored = NameModel.fromBytes(model.toBytes());
+
+        assertEquals(model.next(model.start(), 5000), restored.next(restored.start(), 5000));
+    }
+
+    @Test
     void pageSizeDoesNotChangeTheSequence() {
         NameModel model = trained(3, 5000);
         List<String> reference = drain(model, 50_653);
@@ -76,10 +97,7 @@ class NameModelTest {
     void likelyNamesComeFirst() {
         NameModel.Trainer trainer = new NameModel.Trainer(4);
         for (int i = 0; i < 1000; i++) {
-            trainer.add("^^^", 'n', 1);
-            trainer.add("^^n", 'o', 1);
-            trainer.add("^no", 'o', 1);
-            trainer.add("noo", 'b', 1);
+            trainer.add("noob");
         }
         NameModel model = trainer.build();
 

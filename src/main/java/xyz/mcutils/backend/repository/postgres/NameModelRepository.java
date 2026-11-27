@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Access to the trained username models and the sweep cursors that point into them.
@@ -34,17 +35,17 @@ public class NameModelRepository {
     }
 
     /**
-     * Counts, in the database, which character follows each three-character context across the
-     * tracked names of {@code length}, so only the aggregate crosses the wire.
+     * Feeds the tracked names of {@code length} to {@code trainer}.
      *
-     * <p>The table is split into {@link #TRAINING_PARTITIONS} uuid ranges that are aggregated
-     * concurrently. At most {@link #TRAINING_PARALLELISM} run at once across all lengths, because
-     * each holds a pooled connection for minutes and training must not starve the API.
+     * <p>The table is split into {@link #TRAINING_PARTITIONS} uuid ranges that are read
+     * concurrently, so no single result holds more than a sixteenth of the names. At most
+     * {@link #TRAINING_PARALLELISM} run at once across all lengths, because each holds a pooled
+     * connection for minutes and training must not starve the API.
      *
      * @return the number of names the model was trained on
      */
     public long train(int length, NameModel.Trainer trainer) {
-        long[] names = {0};
+        AtomicLong names = new AtomicLong();
         try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<?>> partitions = new ArrayList<>();
             for (int partition = 0; partition < TRAINING_PARTITIONS; partition++) {
@@ -63,47 +64,34 @@ public class NameModelRepository {
         } catch (ExecutionException e) {
             throw new IllegalStateException("Failed to train the name model", e.getCause());
         }
-        return names[0];
+        return names.get();
     }
 
-    private void trainPartition(int length, int partition, NameModel.Trainer trainer, long[] names) throws InterruptedException {
+    private void trainPartition(int length, int partition, NameModel.Trainer trainer, AtomicLong names) throws InterruptedException {
         this.trainingPermits.acquire();
         try {
-            aggregatePartition(length, partition, trainer, names);
-        } finally {
-            this.trainingPermits.release();
-        }
-    }
-
-    private void aggregatePartition(int length, int partition, NameModel.Trainer trainer, long[] names) {
-        String low = Integer.toHexString(partition) + "0000000-0000-0000-0000-000000000000";
-        String high = partition + 1 < TRAINING_PARTITIONS
-                ? Integer.toHexString(partition + 1) + "0000000-0000-0000-0000-000000000000"
-                : null;
-        this.jdbc.sql("""
-                        SELECT substr(padded, i, 3) AS context, substr(padded, i + 3, 1) AS symbol, count(*) AS n
-                        FROM (
-                            SELECT '^^^' || lower(username) AS padded
+            String low = Integer.toHexString(partition) + "0000000-0000-0000-0000-000000000000";
+            String high = partition + 1 < TRAINING_PARTITIONS
+                    ? Integer.toHexString(partition + 1) + "0000000-0000-0000-0000-000000000000"
+                    : null;
+            List<String> usernames = this.jdbc.sql("""
+                            SELECT lower(username)
                             FROM players
                             WHERE id >= CAST(:low AS uuid) AND (CAST(:high AS uuid) IS NULL OR id < CAST(:high AS uuid))
                               AND char_length(username) = :length AND username ~ '^[A-Za-z0-9_]+$'
-                        ) trained
-                        CROSS JOIN generate_series(1, :length) AS i
-                        GROUP BY 1, 2
-                        """)
-                .param("length", length)
-                .param("low", low)
-                .param("high", high, Types.VARCHAR)
-                .query(rs -> {
-                    String context = rs.getString("context");
-                    long count = rs.getLong("n");
-                    synchronized (trainer) {
-                        trainer.add(context, rs.getString("symbol").charAt(0), count);
-                        if (context.equals("^^^")) {
-                            names[0] += count;
-                        }
-                    }
-                });
+                            """)
+                    .param("length", length)
+                    .param("low", low)
+                    .param("high", high, Types.VARCHAR)
+                    .query(String.class)
+                    .list();
+            for (String username : usernames) {
+                trainer.add(username);
+            }
+            names.addAndGet(usernames.size());
+        } finally {
+            this.trainingPermits.release();
+        }
     }
 
     public Optional<StoredModel> findModel(int length) {
