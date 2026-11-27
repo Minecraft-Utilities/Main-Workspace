@@ -190,14 +190,14 @@ mc-utils:
   # Each length does one pass at the initial rate, then keeps sweeping at the continuous rate.
   name-sweep:
     lengths: 5
-    initial-requests-per-second: 50
+    initial-requests-per-second: 20
     continuous-requests-per-second: 10
     # Lengths too long to enumerate, swept most-likely-name first using a model of the tracked names.
     model:
       lengths: 6,7,8,9
       candidates-per-length: 1000000000
       # Shared by every model length, unlike the per-length enumeration rates above.
-      requests-per-second: 160
+      requests-per-second: 300
 
   # Background jobs. Every job runs unless switched off here by name.
   jobs:
